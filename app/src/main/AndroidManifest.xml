@@ -11,10 +11,10 @@
         android:icon="@drawable/music_regular_132"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:name=".KarooSpintunesApplication"
+        android:name=".KarooTunesApplication"
         android:theme="@style/Theme.AppCompat">
         <activity
-            android:name="de.timklge.karoospintunes.MainActivity"
+            android:name="com.doughindson.karootunes.MainActivity"
             android:theme="@style/SplashTheme"
             android:exported="true">
             <intent-filter>
@@ -33,7 +33,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:scheme="karoospotify"
+                    android:scheme="karootunes"
                     android:host="oauth2redirect" />
             </intent-filter>
         </activity>
@@ -53,7 +53,7 @@
         </activity>
 
         <service
-            android:name="de.timklge.karoospintunes.KarooSpintunesExtension"
+            android:name="com.doughindson.karootunes.KarooTunesExtension"
             android:exported="true"
             tools:ignore="ExportedService">
             <intent-filter>
@@ -66,6 +66,6 @@
 
         <meta-data
             android:name="io.hammerhead.karooext.MANIFEST_URL"
-            android:value="https://github.com/timklge/karoo-spintunes/releases/latest/download/manifest.json" />
+            android:value="https://github.com/doughindson/karoo-tunes/releases/latest/download/manifest.json" />
     </application>
 </manifest>

@@ -37,6 +37,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Karoo Spintunes"
+rootProject.name = "Karoo Tunes"
 
 include("app")

@@ -8,12 +8,12 @@ plugins {
 }
 
 android {
-    namespace = "de.timklge.karoospintunes"
+    namespace = "com.doughindson.karootunes"
     compileSdk = 35
     //noinspection GradleDependency
 
     defaultConfig {
-        applicationId = "de.timklge.karoospintunes"
+        applicationId = "com.doughindson.karootunes"
         minSdk = 26
         //noinspection ExpiredTargetSdkVersion
         targetSdk = 31
@@ -70,20 +70,20 @@ tasks.register("generateManifest") {
     doLast {
         val manifestFile = file("$projectDir/manifest.json")
         val manifest = mapOf(
-            "label" to "Spintunes",
-            "packageName" to "de.timklge.karoospintunes",
-            "iconUrl" to "https://github.com/timklge/karoo-spintunes/releases/latest/download/karoo-spintunes.png",
-            "latestApkUrl" to "https://github.com/timklge/karoo-spintunes/releases/latest/download/app-release.apk",
+            "label" to "Karoo Tunes",
+            "packageName" to "com.doughindson.karootunes",
+            "iconUrl" to "https://github.com/doughindson/karoo-tunes/releases/latest/download/karoo-tunes.png",
+            "latestApkUrl" to "https://github.com/doughindson/karoo-tunes/releases/latest/download/app-release.apk",
             "latestVersion" to android.defaultConfig.versionName,
             "latestVersionCode" to android.defaultConfig.versionCode,
-            "developer" to "timklge",
+            "developer" to "doughindson",
             "description" to "Provides media controls for Spotify. Can be used as a remote control for Spotify running on your phone / computer or offline if you have sideloaded the Spotify app itself on the Karoo. Currently not compatible with Karoo 2.",
             "releaseNotes" to "* Cached playlists, library items etc no longer expire after one week\n* Reduced refresh interval to 25s in remote control mode if the player is only refreshed when it is on screen",
             "screenshotUrls" to listOf(
-                "https://github.com/timklge/karoo-spintunes/releases/latest/download/player.png",
-                "https://github.com/timklge/karoo-spintunes/releases/latest/download/playlists.png",
-                "https://github.com/timklge/karoo-spintunes/releases/latest/download/podcast.png",
-                "https://github.com/timklge/karoo-spintunes/releases/latest/download/login.png"
+                "https://github.com/doughindson/karoo-tunes/releases/latest/download/player.png",
+                "https://github.com/doughindson/karoo-tunes/releases/latest/download/playlists.png",
+                "https://github.com/doughindson/karoo-tunes/releases/latest/download/podcast.png",
+                "https://github.com/doughindson/karoo-tunes/releases/latest/download/login.png"
             ),
             "tags" to listOf("entertainment")
         )
