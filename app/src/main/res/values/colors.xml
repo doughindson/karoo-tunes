@@ -12,4 +12,7 @@
 
     <color name="hRed">#FF6060</color>
     <color name="hYellow">#FFFF60</color>
+
+    <color name="spotifyGreen">#1DB954</color>
+    <color name="progressFillGray">#989898</color>
 </resources>

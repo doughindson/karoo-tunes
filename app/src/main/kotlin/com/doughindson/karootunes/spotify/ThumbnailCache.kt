@@ -134,37 +134,37 @@ class ThumbnailCache(
 
     data class CachedThumbnail(val requestedAt: Long, val bitmap: Bitmap)
 
-    private val inMemoryCache: MutableMap<String, CachedThumbnail?> = mutableMapOf()
-    private val inMemoryCacheLock: Mutex = Mutex()
+    // Lock-free: reads happen on every single render pass (see PlayerViewProvider.provideView),
+    // so this must never make the render path wait on a mutex that a background fetch might be
+    // holding. ConcurrentHashMap gives thread-safe get/put without any suspension or locking here.
+    private val inMemoryCache = java.util.concurrent.ConcurrentHashMap<String, CachedThumbnail>()
+    private val inFlightFetches = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     @OptIn(DelicateCoroutinesApi::class)
-    suspend fun ensureThumbnailIsInCache(url: String): Unit = inMemoryCacheLock.withLock {
-        try {
-            if (inMemoryCache.containsKey(url)) return@withLock
+    fun ensureThumbnailIsInCache(url: String) {
+        if (inMemoryCache.containsKey(url)) return
+        if (!inFlightFetches.add(url)) return // already being fetched by another caller
 
-            inMemoryCache[url] = null
-
-            CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
                 val bitmap = getThumbnail(url) ?: return@launch
 
-                inMemoryCacheLock.withLock {
-                    inMemoryCache[url] = CachedThumbnail(System.currentTimeMillis(), bitmap)
-                    inMemoryCache.entries
-                        .removeAll { it.value != null && it.value!!.requestedAt < System.currentTimeMillis() - 60 * 1_000 }
+                inMemoryCache[url] = CachedThumbnail(System.currentTimeMillis(), bitmap)
+                inMemoryCache.entries
+                    .removeAll { it.value.requestedAt < System.currentTimeMillis() - 60 * 1_000 }
 
-                    Log.i(TAG, "Cached thumbnail for $url")
+                Log.i(TAG, "Cached thumbnail for $url")
 
-                    playerStateProvider.update { state ->
-                        state.copy(thumbnailFetchedAtMs = System.currentTimeMillis())
-                    }
+                playerStateProvider.update { state ->
+                    state.copy(thumbnailFetchedAtMs = System.currentTimeMillis())
                 }
+            } catch (e: Throwable) {
+                Log.e(TAG, "Failed to cache thumbnail for $url", e)
+            } finally {
+                inFlightFetches.remove(url)
             }
-        } catch(e: Throwable){
-            Log.e(TAG, "Failed to cache thumbnail for $url", e)
         }
     }
 
-    suspend fun getThumbnailFromInMemoryCache(url: String): Bitmap? = inMemoryCacheLock.withLock {
-        inMemoryCache[url]?.bitmap
-    }
+    fun getThumbnailFromInMemoryCache(url: String): Bitmap? = inMemoryCache[url]?.bitmap
 }

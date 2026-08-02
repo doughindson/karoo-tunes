@@ -7,6 +7,7 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import com.doughindson.karootunes.KarooTunesExtension
 import com.doughindson.karootunes.spotify.APIClientProvider
+import com.doughindson.karootunes.spotify.PlayerAction
 import com.doughindson.karootunes.spotify.PlayerStateProvider
 import kotlinx.coroutines.flow.first
 import org.koin.core.component.KoinComponent
@@ -28,10 +29,17 @@ class FastForwardAction : ActionCallback, KoinComponent {
 
         if (newPosition != null){
             val apiClient = apiClientProvider.getActiveAPIInstance().first()
-            apiClient.seek(newPosition)
 
             playerStateProvider.update { appState ->
-                appState.copy(playProgressInMs = newPosition)
+                appState.copy(playProgressInMs = newPosition, pendingActions = appState.pendingActions + PlayerAction.SEEK)
+            }
+
+            try {
+                apiClient.seek(newPosition)
+            } finally {
+                playerStateProvider.update { appState ->
+                    appState.copy(pendingActions = appState.pendingActions - PlayerAction.SEEK)
+                }
             }
         }
     }

@@ -4,7 +4,5 @@ enum class PlayerSize {
     SINGLE_FIELD,
     SMALL,
     MEDIUM,
-    FULL_PAGE; /* Full page */
-
-    fun isLarge(): Boolean = (this == FULL_PAGE || this == MEDIUM)
+    FULL_PAGE /* Full page */
 }

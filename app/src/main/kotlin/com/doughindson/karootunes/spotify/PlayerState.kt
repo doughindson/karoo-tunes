@@ -1,5 +1,14 @@
 package com.doughindson.karootunes.spotify
 
+data class CachedTrackInfo(
+    val trackId: String? = null,
+    val trackUri: String? = null,
+    val trackName: String? = null,
+    val artistName: String? = null,
+    val thumbnailUrls: List<String>? = null,
+    val durationMs: Int? = null
+)
+
 data class PlayerState(
     val isPlayingType: PlaybackType? = null,
     val isPlayingTrackName: String? = null,
@@ -20,8 +29,15 @@ data class PlayerState(
     val currentTrackLengthInMs: Int? = null,
     val volume: Float? = null,
     val thumbnailFetchedAtMs: Long? = null,
+    val isTrackLiked: Boolean? = null,
+
+    // Prefetched so Next/Previous can show real track info the instant the button is pressed,
+    // instead of a generic loading state, while the actual skip request is still in flight.
+    val previousTrackCache: CachedTrackInfo? = null,
+    val upcomingTracksCache: List<CachedTrackInfo> = emptyList(),
 
     val disabledActions: MutableMap<PlayerAction, Boolean> = mutableMapOf(),
+    val pendingActions: Set<PlayerAction> = emptySet(),
 
     val error: PlayerError? = null
 )
@@ -29,5 +45,5 @@ data class PlayerState(
 data class PlayerError(val title: String, val message: String)
 
 enum class PlayerAction {
-    PLAY, PAUSE, SKIP_NEXT, SKIP_PREVIOUS, SEEK, TOGGLE_SHUFFLE, TOGGLE_REPEAT, SET_VOLUME
+    PLAY, PAUSE, SKIP_NEXT, SKIP_PREVIOUS, SEEK, TOGGLE_SHUFFLE, TOGGLE_REPEAT, SET_VOLUME, ADD_TO_LIBRARY
 }

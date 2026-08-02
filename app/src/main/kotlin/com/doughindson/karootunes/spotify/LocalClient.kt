@@ -294,4 +294,32 @@ class LocalClient(val context: Context) : APIClient {
             }
         }
     }
+
+    suspend fun removeTrackFromLibrary(selectedTrackUris: List<String>) {
+        return mutex.withLock {
+            selectedTrackUris.forEach { uri ->
+                spotifyRemote?.userApi?.removeFromLibrary(uri)
+            }
+        }
+    }
+
+    suspend fun isTrackSaved(uri: String): Boolean? {
+        val remote = spotifyRemote ?: return null
+
+        return try {
+            suspendCoroutine { continuation ->
+                val result = remote.userApi.getLibraryState(uri)
+
+                result.setResultCallback { libraryState ->
+                    continuation.resume(libraryState.isAdded)
+                }
+                result.setErrorCallback { error ->
+                    continuation.resumeWithException(error)
+                }
+            }
+        } catch (e: Throwable) {
+            Log.e(KarooTunesExtension.TAG, "Failed to get library state for $uri", e)
+            null
+        }
+    }
 }

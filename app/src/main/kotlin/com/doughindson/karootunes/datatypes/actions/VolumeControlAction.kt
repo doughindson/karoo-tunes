@@ -8,6 +8,7 @@ import androidx.glance.appwidget.action.ActionCallback
 import com.doughindson.karootunes.KarooTunesExtension
 import com.doughindson.karootunes.spotify.APIClientProvider
 import com.doughindson.karootunes.spotify.LocalClient
+import com.doughindson.karootunes.spotify.PlayerAction
 import com.doughindson.karootunes.spotify.PlayerStateProvider
 import com.doughindson.karootunes.spotify.WebAPIClient
 import kotlinx.coroutines.flow.first
@@ -58,15 +59,21 @@ abstract class VolumeControlAction: ActionCallback, KoinComponent {
         }
         val volume = (oldVolume + getVolumeStep() * stepFactor).coerceIn(0f, 1f)
 
-        apiClient.setVolume(volume)
-
         if (apiClient is WebAPIClient){
             playerStateProvider.update { appState ->
-                appState.copy(commandPending = true, volume = volume)
+                appState.copy(commandPending = true, volume = volume, pendingActions = appState.pendingActions + PlayerAction.SET_VOLUME)
             }
         } else {
             playerStateProvider.update { appState ->
-                appState.copy(volume = volume)
+                appState.copy(volume = volume, pendingActions = appState.pendingActions + PlayerAction.SET_VOLUME)
+            }
+        }
+
+        try {
+            apiClient.setVolume(volume)
+        } finally {
+            playerStateProvider.update { appState ->
+                appState.copy(pendingActions = appState.pendingActions - PlayerAction.SET_VOLUME)
             }
         }
 

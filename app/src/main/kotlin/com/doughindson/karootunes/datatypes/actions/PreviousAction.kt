@@ -7,6 +7,7 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import com.doughindson.karootunes.KarooTunesExtension
 import com.doughindson.karootunes.spotify.APIClientProvider
+import com.doughindson.karootunes.spotify.CachedTrackInfo
 import com.doughindson.karootunes.spotify.LocalClient
 import com.doughindson.karootunes.spotify.PlayerAction
 import com.doughindson.karootunes.spotify.PlayerStateProvider
@@ -39,32 +40,73 @@ class PreviousAction : ActionCallback, KoinComponent {
 
         val apiClient = apiClientProvider.getActiveAPIInstance().first()
 
-        when (apiClient) {
-            is LocalClient -> {
-                apiClient.previous()
+        val restartTrack = apiClient is WebAPIClient && ((!isAtStartOfTrack && !isAtEndOfTrack) || skipToPreviousDisabled)
+
+        if (restartTrack) {
+            playerStateProvider.update { appState ->
+                appState.copy(
+                    commandPending = false,
+                    playProgressInMs = 0,
+                    isInOptionsMenu = false,
+                    pendingActions = appState.pendingActions + PlayerAction.SEEK
+                )
             }
 
-            is WebAPIClient -> {
-                if ((!isAtStartOfTrack && !isAtEndOfTrack) || skipToPreviousDisabled) {
-                    apiClient.seek(0)
-
-                    playerStateProvider.update { appState ->
-                        appState.copy(commandPending = false, playProgressInMs = 0, isInOptionsMenu = false)
-                    }
-
-                    return
-                } else {
-                    apiClient.previous()
+            try {
+                (apiClient as WebAPIClient).seek(0)
+            } finally {
+                playerStateProvider.update { appState ->
+                    appState.copy(pendingActions = appState.pendingActions - PlayerAction.SEEK)
                 }
             }
 
-            else -> {
-                error("Unknown API client type")
-            }
+            val runtime = TimeSource.Monotonic.markNow() - start
+            Log.d(KarooTunesExtension.TAG, "Previous action took $runtime")
+            return
         }
 
         playerStateProvider.update { appState ->
-            appState.copy(commandPending = appState.commandPending || (apiClient is WebAPIClient), isInOptionsMenu = false)
+            // Show the cached previous track instantly if we have it; otherwise fall back to a
+            // generic loading state until the real skip completes and the next poll confirms it.
+            val cachedPrevious = appState.previousTrackCache
+            val currentAsCached = appState.isPlayingTrackId?.let {
+                CachedTrackInfo(
+                    trackId = appState.isPlayingTrackId,
+                    trackUri = appState.isPlayingTrackUri,
+                    trackName = appState.isPlayingTrackName,
+                    artistName = appState.isPlayingArtistName,
+                    thumbnailUrls = appState.isPlayingTrackThumbnailUrls,
+                    durationMs = appState.currentTrackLengthInMs
+                )
+            }
+
+            appState.copy(
+                commandPending = appState.commandPending || (apiClient is WebAPIClient),
+                isInOptionsMenu = false,
+                pendingActions = appState.pendingActions + PlayerAction.SKIP_PREVIOUS,
+                isPlayingTrackName = cachedPrevious?.trackName,
+                isPlayingArtistName = cachedPrevious?.artistName,
+                isPlayingTrackId = cachedPrevious?.trackId,
+                isPlayingTrackUri = cachedPrevious?.trackUri,
+                isPlayingTrackThumbnailUrls = cachedPrevious?.thumbnailUrls,
+                currentTrackLengthInMs = cachedPrevious?.durationMs,
+                playProgressInMs = 0,
+                isTrackLiked = null,
+                previousTrackCache = null,
+                upcomingTracksCache = (listOfNotNull(currentAsCached) + appState.upcomingTracksCache).take(3)
+            )
+        }
+
+        try {
+            when (apiClient) {
+                is LocalClient -> apiClient.previous()
+                is WebAPIClient -> apiClient.previous()
+                else -> error("Unknown API client type")
+            }
+        } finally {
+            playerStateProvider.update { appState ->
+                appState.copy(pendingActions = appState.pendingActions - PlayerAction.SKIP_PREVIOUS)
+            }
         }
 
         val runtime = TimeSource.Monotonic.markNow() - start

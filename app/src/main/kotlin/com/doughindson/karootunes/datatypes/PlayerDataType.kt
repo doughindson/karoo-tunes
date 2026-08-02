@@ -94,19 +94,35 @@ fun OptionsRows(
     context: Context,
     playerState: PlayerState,
     showToggle: Boolean,
-    buttonsDisabled: Boolean,
+    baseDisabled: Boolean,
     disabledActions: Map<PlayerAction, Boolean>,
     playerSize: PlayerSize
 ) {
+    val pending = playerState.pendingActions
+
     Row(modifier = GlanceModifier.fillMaxWidth().height(50.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        ActionButton(R.drawable.skip_previous_regular_132, buttonsDisabled || (disabledActions[PlayerAction.SKIP_PREVIOUS] == true && disabledActions[PlayerAction.SEEK] == true) ) { actionRunCallback(PreviousAction::class.java) }
-        ActionButton(R.drawable.rewind_regular_132, buttonsDisabled || disabledActions[PlayerAction.SEEK] == true) { actionRunCallback(RewindAction::class.java) }
-        PlayButton(playerState, playerSize, buttonsDisabled)
-        ActionButton(R.drawable.fast_forward_regular_132, buttonsDisabled || disabledActions[PlayerAction.SEEK] == true) { actionRunCallback(FastForwardAction::class.java) }
-        ActionButton(R.drawable.skip_next_regular_132, buttonsDisabled || disabledActions[PlayerAction.SKIP_NEXT] == true) { actionRunCallback(NextAction::class.java) }
+        ActionButton(
+            R.drawable.skip_previous_regular_132,
+            baseDisabled || pending.contains(PlayerAction.SKIP_PREVIOUS) || pending.contains(PlayerAction.SEEK) ||
+                (disabledActions[PlayerAction.SKIP_PREVIOUS] == true && disabledActions[PlayerAction.SEEK] == true)
+        ) { actionRunCallback(PreviousAction::class.java) }
+        ActionButton(
+            R.drawable.rewind_regular_132,
+            baseDisabled || pending.contains(PlayerAction.SEEK) || disabledActions[PlayerAction.SEEK] == true
+        ) { actionRunCallback(RewindAction::class.java) }
+        val playPauseAction = if (playerState.isPlaying == true) PlayerAction.PAUSE else PlayerAction.PLAY
+        PlayButton(playerState, playerSize, baseDisabled || pending.contains(playPauseAction))
+        ActionButton(
+            R.drawable.fast_forward_regular_132,
+            baseDisabled || pending.contains(PlayerAction.SEEK) || disabledActions[PlayerAction.SEEK] == true
+        ) { actionRunCallback(FastForwardAction::class.java) }
+        ActionButton(
+            R.drawable.skip_next_regular_132,
+            baseDisabled || pending.contains(PlayerAction.SKIP_NEXT) || disabledActions[PlayerAction.SKIP_NEXT] == true
+        ) { actionRunCallback(NextAction::class.java) }
 
         if (showToggle){
-            ActionButton(R.drawable.dots_vertical_rounded_regular_132, buttonsDisabled) { actionRunCallback(ToggleOptionsMenuCallback::class.java)}
+            ActionButton(R.drawable.dots_vertical_rounded_regular_132, baseDisabled) { actionRunCallback(ToggleOptionsMenuCallback::class.java)}
         }
     }
 
@@ -117,23 +133,23 @@ fun OptionsRows(
             else -> R.drawable.repeat_regular_132
         }
 
-        val canRepeat = !buttonsDisabled && playerState.disabledActions[PlayerAction.TOGGLE_REPEAT] != true
+        val canRepeat = !baseDisabled && !pending.contains(PlayerAction.TOGGLE_REPEAT) && playerState.disabledActions[PlayerAction.TOGGLE_REPEAT] != true
         ActionButton(repeatIcon, !canRepeat, playerState.isRepeating == RepeatState.OFF) { actionRunCallback(ToggleRepeatAction::class.java) }
-        val canShuffle = !buttonsDisabled && playerState.disabledActions[PlayerAction.TOGGLE_SHUFFLE] != true
+        val canShuffle = !baseDisabled && !pending.contains(PlayerAction.TOGGLE_SHUFFLE) && playerState.disabledActions[PlayerAction.TOGGLE_SHUFFLE] != true
         ActionButton(R.drawable.shuffle_regular_132, !canShuffle, playerState.isShuffling != true) { actionRunCallback(ToggleShuffleAction::class.java) }
-        ActionButton(R.drawable.playlist_solid_132, buttonsDisabled) {
+        ActionButton(R.drawable.playlist_solid_132, baseDisabled) {
             val intent = Intent(context, QueueActivity::class.java)
             actionStartActivity(intent)
         }
 
         if (disabledActions[PlayerAction.SET_VOLUME] != true){
             val canMakeQuieter = playerState.volume?.let { v -> v > 0.0f } ?: false
-            ActionButton(R.drawable.volume_low_regular_132, buttonsDisabled, !canMakeQuieter) { actionRunCallback(QuieterAction::class.java)}
+            ActionButton(R.drawable.volume_low_regular_132, baseDisabled || pending.contains(PlayerAction.SET_VOLUME), !canMakeQuieter) { actionRunCallback(QuieterAction::class.java)}
         }
 
         if (disabledActions[PlayerAction.SET_VOLUME] != true){
             val canMakeLouder = playerState.volume?.let { v -> v < 1.0f } ?: false
-            ActionButton(R.drawable.volume_full_regular_132, buttonsDisabled, !canMakeLouder) { actionRunCallback(LouderAction::class.java)}
+            ActionButton(R.drawable.volume_full_regular_132, baseDisabled || pending.contains(PlayerAction.SET_VOLUME), !canMakeLouder) { actionRunCallback(LouderAction::class.java)}
         }
     }
 }
@@ -183,13 +199,13 @@ class PlayerDataType(
         val viewJob = CoroutineScope(Dispatchers.IO).launch {
             emitter.onNext(ShowCustomStreamState("", null))
             if (config.preview) {
-                playerViewProvider.provideView(playerSize).collect { views ->
+                playerViewProvider.provideView(playerSize, config.viewSize).collect { views ->
                     emitter.updateView(views)
                 }
             } else {
                 karooSystemServiceProvider.karooSystemService.streamDatatypeIsVisible(dataTypeId).collectLatest { playerIsVisible ->
                     if (playerIsVisible) {
-                        playerViewProvider.provideView(playerSize).collect { views ->
+                        playerViewProvider.provideView(playerSize, config.viewSize).collect { views ->
                             emitter.updateView(views)
                         }
                     }

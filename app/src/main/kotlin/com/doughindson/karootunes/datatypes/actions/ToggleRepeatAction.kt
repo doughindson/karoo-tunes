@@ -7,6 +7,7 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import com.doughindson.karootunes.KarooTunesExtension
 import com.doughindson.karootunes.spotify.APIClientProvider
+import com.doughindson.karootunes.spotify.PlayerAction
 import com.doughindson.karootunes.spotify.PlayerStateProvider
 import com.doughindson.karootunes.spotify.RepeatState
 import com.doughindson.karootunes.spotify.WebAPIClient
@@ -36,10 +37,22 @@ class ToggleRepeatAction : ActionCallback, KoinComponent {
         }
 
         val apiClient = apiClientProvider.getActiveAPIInstance().first()
-        apiClient.toggleRepeat(newRepeatState)
 
         playerStateProvider.update { appState ->
-            appState.copy(commandPending = appState.commandPending || (apiClient is WebAPIClient), isInOptionsMenu = false, isRepeating = newRepeatState)
+            appState.copy(
+                commandPending = appState.commandPending || (apiClient is WebAPIClient),
+                isInOptionsMenu = false,
+                isRepeating = newRepeatState,
+                pendingActions = appState.pendingActions + PlayerAction.TOGGLE_REPEAT
+            )
+        }
+
+        try {
+            apiClient.toggleRepeat(newRepeatState)
+        } finally {
+            playerStateProvider.update { appState ->
+                appState.copy(pendingActions = appState.pendingActions - PlayerAction.TOGGLE_REPEAT)
+            }
         }
     }
 }

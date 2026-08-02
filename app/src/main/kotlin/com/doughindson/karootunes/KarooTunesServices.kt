@@ -6,6 +6,7 @@ import com.doughindson.karootunes.KarooTunesExtension.Companion.TAG
 import com.doughindson.karootunes.datatypes.PlayerDataType
 import com.doughindson.karootunes.screens.KarooTunesSettings
 import com.doughindson.karootunes.spotify.APIClientProvider
+import com.doughindson.karootunes.spotify.CachedTrackInfo
 import com.doughindson.karootunes.spotify.LocalClient
 import com.doughindson.karootunes.spotify.PlaybackType
 import com.doughindson.karootunes.spotify.PlayerAction
@@ -61,6 +62,7 @@ class KarooTunesServices(private val webAPIClient: WebAPIClient,
                 launch { startThumbnailCleanupJob() }
                 launch { startLocalSpotifyJob() }
                 launch { startAutoVolumeJob() }
+                launch { startOptionsMenuAutoCollapseJob() }
             }
         }
     }
@@ -71,6 +73,22 @@ class KarooTunesServices(private val webAPIClient: WebAPIClient,
 
     private suspend fun startAutoVolumeJob() {
         autoVolume.setAutoVolume()
+    }
+
+    // Auto-collapses the MEDIUM/SMALL widget's expanded like/shuffle/library panel 3s after it's
+    // opened. collectLatest cancels the pending delay whenever isInOptionsMenu changes again
+    // before it fires (re-toggle, or Next/Previous force-closing it) - avoiding a stale revert
+    // from a naively per-tap-launched coroutine firing after a fresh re-open already began.
+    private suspend fun startOptionsMenuAutoCollapseJob() {
+        playerStateProvider.state
+            .map { it.isInOptionsMenu }
+            .distinctUntilChanged()
+            .collectLatest { isInOptionsMenu ->
+                if (isInOptionsMenu) {
+                    delay(3_000)
+                    playerStateProvider.update { it.copy(isInOptionsMenu = false) }
+                }
+            }
     }
 
     private suspend fun startPlayerRefreshJob() {
@@ -92,6 +110,29 @@ class KarooTunesServices(private val webAPIClient: WebAPIClient,
         localClient.streamState()
             .debounce(500L)
             .collect { (playerError, playerState) ->
+                val newTrackUri = playerState?.track?.uri
+                val trackChanged = newTrackUri != playerStateProvider.state.value.isPlayingTrackUri
+                val newIsTrackLiked = if (trackChanged || playerStateProvider.state.value.isTrackLiked == null) {
+                    newTrackUri?.let { uri -> localClient.isTrackSaved(uri) }
+                } else {
+                    playerStateProvider.state.value.isTrackLiked
+                }
+
+                // Snapshot the track we're leaving so a subsequent Previous press can show it
+                // instantly instead of a generic loading state (no queue-prefetch API is
+                // available in local/App Remote mode, so upcomingTracksCache stays empty here).
+                val confirmedPreviousTrack = if (trackChanged) {
+                    playerStateProvider.state.value.isPlayingTrackUri?.let {
+                        CachedTrackInfo(
+                            trackUri = playerStateProvider.state.value.isPlayingTrackUri,
+                            trackName = playerStateProvider.state.value.isPlayingTrackName,
+                            artistName = playerStateProvider.state.value.isPlayingArtistName,
+                            thumbnailUrls = playerStateProvider.state.value.isPlayingTrackThumbnailUrls,
+                            durationMs = playerStateProvider.state.value.currentTrackLengthInMs
+                        )
+                    }
+                } else null
+
                 playerStateProvider.update { state ->
                     val disabled = mutableMapOf<PlayerAction, Boolean>()
 
@@ -119,6 +160,8 @@ class KarooTunesServices(private val webAPIClient: WebAPIClient,
                         isLocalPlayer = true,
                         disabledActions = disabled,
                         volume = localClient.getVolume(),
+                        isTrackLiked = newIsTrackLiked,
+                        previousTrackCache = confirmedPreviousTrack ?: state.previousTrackCache,
                         error = playerError
                     )
                 }
@@ -234,6 +277,55 @@ class KarooTunesServices(private val webAPIClient: WebAPIClient,
                     disallows.togglingShuffle?.let { disabledActions.put(PlayerAction.TOGGLE_SHUFFLE, it) }
                 }
 
+                val newTrackId = playerState?.item?.id
+                val trackChanged = newTrackId != playerStateProvider.state.value.isPlayingTrackId
+                val newIsTrackLiked = if (trackChanged || playerStateProvider.state.value.isTrackLiked == null) {
+                    newTrackId?.let { id -> webAPIClient.isTrackSaved(id) }
+                } else {
+                    playerStateProvider.state.value.isTrackLiked
+                }
+
+                // Snapshot the track we're leaving (before it's overwritten below) so a subsequent
+                // Previous press can show it instantly instead of a generic loading state.
+                val confirmedPreviousTrack = if (trackChanged) {
+                    playerStateProvider.state.value.isPlayingTrackId?.let { oldState ->
+                        CachedTrackInfo(
+                            trackId = playerStateProvider.state.value.isPlayingTrackId,
+                            trackUri = playerStateProvider.state.value.isPlayingTrackUri,
+                            trackName = playerStateProvider.state.value.isPlayingTrackName,
+                            artistName = playerStateProvider.state.value.isPlayingArtistName,
+                            thumbnailUrls = playerStateProvider.state.value.isPlayingTrackThumbnailUrls,
+                            durationMs = playerStateProvider.state.value.currentTrackLengthInMs
+                        )
+                    }
+                } else null
+
+                val shouldRefreshQueue = trackChanged || playerStateProvider.state.value.upcomingTracksCache.isEmpty()
+                val newUpcomingTracks = if (shouldRefreshQueue) {
+                    val settings = karooSystem.streamSettings().first()
+
+                    webAPIClient.getPlayerQueue()?.queue?.take(3)?.map { queueItem ->
+                        val images = queueItem.images ?: queueItem.album?.images
+                        val url = if (settings.highResThumbnails) {
+                            images?.getOrNull(1)?.url ?: images?.lastOrNull()?.url
+                        } else {
+                            images?.lastOrNull()?.url
+                        }
+                        url?.let { thumbnailCache.ensureThumbnailIsInCache(it) }
+
+                        CachedTrackInfo(
+                            trackId = queueItem.id,
+                            trackUri = queueItem.uri,
+                            trackName = queueItem.name,
+                            artistName = queueItem.artists?.joinToString(", ") { artist -> artist.name ?: "" },
+                            thumbnailUrls = images?.mapNotNull { it.url },
+                            durationMs = queueItem.durationMs
+                        )
+                    } ?: playerStateProvider.state.value.upcomingTracksCache
+                } else {
+                    playerStateProvider.state.value.upcomingTracksCache
+                }
+
                 playerStateProvider.update { state ->
                     state.copy(
                         isPlayingType = PlaybackType.fromString(playerState?.currentlyPlayingType),
@@ -254,6 +346,9 @@ class KarooTunesServices(private val webAPIClient: WebAPIClient,
                         isLocalPlayer = false,
                         disabledActions = disabledActions,
                         volume = playerState?.device?.volumePercent?.toFloat()?.div(100f)?.coerceIn(0f, 1f),
+                        isTrackLiked = newIsTrackLiked,
+                        previousTrackCache = confirmedPreviousTrack ?: state.previousTrackCache,
+                        upcomingTracksCache = newUpcomingTracks,
                         error = if (playerState != null) null else state.error
                     )
                 }
@@ -264,20 +359,29 @@ class KarooTunesServices(private val webAPIClient: WebAPIClient,
     }
 
     private suspend fun startPlayerAdvanceJob() {
+        // Advances the progress bar locally between real polls (no network call here) - ticking
+        // every second instead of every 5s makes it visibly smoother. Advancing by the actual
+        // elapsed time (rather than a flat 1000ms) avoids drift if a tick is ever delayed.
+        var lastTick = TimeSource.Monotonic.markNow()
+
         while(true) {
             try {
+                delay(1_000)
+
+                val now = TimeSource.Monotonic.markNow()
+                val elapsedMs = (now - lastTick).inWholeMilliseconds
+                lastTick = now
+
                 playerStateProvider.update { player ->
                     if (player.isPlaying == true) {
                         val currentProgress = player.playProgressInMs ?: 0
                         val length = player.currentTrackLengthInMs ?: 0
 
-                        player.copy(playProgressInMs = (currentProgress + 5000).coerceAtMost(length))
+                        player.copy(playProgressInMs = (currentProgress + elapsedMs.toInt()).coerceAtMost(length))
                     } else {
                         player
                     }
                 }
-
-                delay(5_000)
             } catch(e: CancellationException){
                 Log.w(TAG, "Player advance job was cancelled")
                 throw e

@@ -127,10 +127,12 @@ class KarooSystemServiceProvider(private val context: Context) {
 
         if (e is HttpException){
             try {
-                val deserializedError = message.let { jsonWithUnknownKeys.decodeFromString<WebAPIErrorResponse>(it) }
+                // e.message here is just the generic "HTTP <status>" wrapper - the actual reason
+                // Spotify gave (e.g. "Insufficient client scope") is in the raw response body.
+                val deserializedError = jsonWithUnknownKeys.decodeFromString<WebAPIErrorResponse>(e.body.decodeToString())
                 errorMessageString = "${deserializedError.error.status} - ${deserializedError.error.message}"
-            } catch(e: Throwable) {
-                Log.w(TAG, "Expected error to be in WebAPIErrorResponse format, but was not: ${e.message}")
+            } catch(parseError: Throwable) {
+                Log.w(TAG, "Expected error to be in WebAPIErrorResponse format, but was not: ${parseError.message}")
             }
         }
 

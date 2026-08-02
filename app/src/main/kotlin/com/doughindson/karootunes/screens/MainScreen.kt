@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -480,16 +481,43 @@ fun MainScreen(onFinish: () -> Unit) {
                 it.copy(inPreviewMode = it.inPreviewMode - 1)
             }
         }, properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true, usePlatformDefaultWidth = false)) {
-            Box(modifier = Modifier.padding(1.dp).height(400.dp).fillMaxWidth()) {
+            // Preview the field at the device's actual screen resolution (not a hardcoded
+            // 480x800dp) - on a high-density Karoo, 480dp/800dp is far larger than the real
+            // screen, which made the previewed artwork balloon past the visible area.
+            val density = LocalDensity.current
+            val displayMetrics = ctx.resources.displayMetrics
+            val fullSizePx = Pair(displayMetrics.widthPixels, displayMetrics.heightPixels)
+
+            // Tap the size label (top-right of the dialog) to cycle through PlayerSize, so
+            // MEDIUM/SMALL/SINGLE_FIELD layouts can be checked here without a real Karoo profile
+            // allocating the data field at that grid size.
+            var previewPlayerSize by remember { mutableStateOf(PlayerSize.FULL_PAGE) }
+            val heightFraction = when (previewPlayerSize) {
+                PlayerSize.FULL_PAGE -> 1f
+                PlayerSize.MEDIUM -> 0.4f
+                PlayerSize.SMALL -> 0.25f
+                PlayerSize.SINGLE_FIELD -> 0.12f
+            }
+            val fieldHeightPx = (fullSizePx.second * heightFraction).roundToInt()
+            val previewSizePx = Pair(fullSizePx.first, fieldHeightPx)
+            val previewWidthDp = with(density) { previewSizePx.first.toDp() }
+            val previewHeightDp = with(density) { previewSizePx.second.toDp() }
+            // Outer dialog surface always spans the full screen height (regardless of the
+            // fraction above) so the size-cycle label stays in a fixed, reliably-tappable spot
+            // and shrinking the previewed field can't put taps outside the dialog's own bounds
+            // (which would otherwise trigger dismissOnClickOutside).
+            val dialogHeightDp = with(density) { fullSizePx.second.toDp() }
+
+            Box(modifier = Modifier.padding(1.dp).height(dialogHeightDp).fillMaxWidth()) {
                 Column(modifier = Modifier.align(Alignment.Center)) {
-                    val view: RemoteViews? by viewProvider.provideView(PlayerSize.FULL_PAGE).collectAsStateWithLifecycle(initialValue = null)
+                    val view: RemoteViews? by viewProvider.provideView(previewPlayerSize, previewSizePx).collectAsStateWithLifecycle(initialValue = null)
 
                     AndroidView(
                         factory = { context ->
                             FrameLayout(context).apply {
                                 layoutParams = FrameLayout.LayoutParams(
-                                    480, // width
-                                    400  // height
+                                    previewSizePx.first,
+                                    previewSizePx.second
                                 )
 
                                 val addedView = view?.apply(context, this)
@@ -504,10 +532,23 @@ fun MainScreen(onFinish: () -> Unit) {
                             newView?.let { v -> frameLayout.addView(v) }
                         },
                         modifier = Modifier
-                            .size(480.dp, 800.dp) // Force the AndroidView to this exact size
+                            .size(previewWidthDp, previewHeightDp) // Force the AndroidView to this exact size
                             .background(if (isSystemInDarkTheme()) Color.Black else Color.White)
                     )
                 }
+
+                Text(
+                    previewPlayerSize.name,
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .clickable {
+                            val sizes = PlayerSize.entries
+                            previewPlayerSize = sizes[(sizes.indexOf(previewPlayerSize) + 1) % sizes.size]
+                        }
+                        .padding(8.dp)
+                )
 
                 Image(
                     painter = painterResource(id = R.drawable.back),

@@ -394,17 +394,57 @@ class WebAPIClient(
         }
     }
 
+    // Spotify deprecated the track-specific /me/tracks (save/remove/contains) endpoints in favor
+    // of a unified /me/library endpoint that takes full "spotify:track:{id}" URIs instead of bare
+    // IDs - the old endpoints now return 403 Forbidden for apps rather than actually saving.
     suspend fun addTrackToLibrary(currentTrackIds: List<String>) {
         try {
             val encoded = withContext(Dispatchers.IO) {
-                URLEncoder.encode(currentTrackIds.joinToString(","), "UTF-8")
+                URLEncoder.encode(currentTrackIds.joinToString(",") { "spotify:track:$it" }, "UTF-8")
             }
 
-            oAuth2Client.makeAuthorizedRequest("PUT", "$BASE_URL/me/tracks/?ids=${encoded}")
+            oAuth2Client.makeAuthorizedRequest("PUT", "$BASE_URL/me/library?uris=${encoded}")
         } catch (e: CancellationException) {
             Log.w(KarooTunesExtension.TAG, "Cancelled add track to library action", e)
         } catch (e: Throwable) {
             karooSystemServiceProvider.showError("Add To Library", e.message ?: "Failed to add track", e)
+        }
+    }
+
+    suspend fun removeTrackFromLibrary(currentTrackIds: List<String>) {
+        try {
+            val encoded = withContext(Dispatchers.IO) {
+                URLEncoder.encode(currentTrackIds.joinToString(",") { "spotify:track:$it" }, "UTF-8")
+            }
+
+            oAuth2Client.makeAuthorizedRequest("DELETE", "$BASE_URL/me/library?uris=${encoded}")
+        } catch (e: CancellationException) {
+            Log.w(KarooTunesExtension.TAG, "Cancelled remove track from library action", e)
+        } catch (e: Throwable) {
+            karooSystemServiceProvider.showError("Remove From Library", e.message ?: "Failed to remove track", e)
+        }
+    }
+
+    suspend fun isTrackSaved(trackId: String): Boolean? {
+        return try {
+            val encoded = withContext(Dispatchers.IO) {
+                URLEncoder.encode("spotify:track:$trackId", "UTF-8")
+            }
+
+            val response = oAuth2Client.makeAuthorizedRequest("GET", "$BASE_URL/me/library/contains?uris=${encoded}", markAsPending = false)
+            if (response.statusCode !in 200..299) {
+                error("HTTP ${response.statusCode}: ${response.error}")
+            }
+            response.error?.let { error(it) }
+
+            val jsonString = response.body?.decodeToString() ?: error("Failed to read json")
+            jsonWithUnknownKeys.decodeFromString<List<Boolean>>(jsonString).firstOrNull()
+        } catch (e: CancellationException) {
+            Log.w(KarooTunesExtension.TAG, "Cancelled is track saved check", e)
+            null
+        } catch (e: Throwable) {
+            Log.e(KarooTunesExtension.TAG, "Failed to check if track is saved", e)
+            null
         }
     }
 

@@ -7,6 +7,7 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
 import com.doughindson.karootunes.KarooTunesExtension
 import com.doughindson.karootunes.spotify.APIClientProvider
+import com.doughindson.karootunes.spotify.PlayerAction
 import com.doughindson.karootunes.spotify.PlayerStateProvider
 import kotlinx.coroutines.flow.first
 import org.koin.core.component.KoinComponent
@@ -25,11 +26,17 @@ class PlayAction : ActionCallback, KoinComponent {
         val start = TimeSource.Monotonic.markNow()
         Log.d(KarooTunesExtension.TAG, "Play action called")
 
-        val apiClient = apiClientProvider.getActiveAPIInstance().first()
-        apiClient.play()
-
         playerStateProvider.update { appState ->
-            appState.copy(isPlaying = true)
+            appState.copy(isPlaying = true, pendingActions = appState.pendingActions + PlayerAction.PLAY)
+        }
+
+        try {
+            val apiClient = apiClientProvider.getActiveAPIInstance().first()
+            apiClient.play()
+        } finally {
+            playerStateProvider.update { appState ->
+                appState.copy(pendingActions = appState.pendingActions - PlayerAction.PLAY)
+            }
         }
 
         val runtime = TimeSource.Monotonic.markNow() - start
