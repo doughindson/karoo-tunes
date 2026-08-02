@@ -320,7 +320,11 @@ class WebAPIClient(
         }
     }
 
-    suspend fun getPlayerQueue(): QueueResponse? {
+    // notifyOnError is off for the background upcoming-tracks prefetch (KarooTunesServices) -
+    // that's a best-effort cache warm-up, not a user-initiated action, so a transient network
+    // blip (e.g. no signal mid-ride) shouldn't pop an in-ride alert. The Queue screen still gets
+    // its user-facing error as before.
+    suspend fun getPlayerQueue(notifyOnError: Boolean = true): QueueResponse? {
         return try {
             val response = oAuth2Client.makeAuthorizedRequest("GET", "$BASE_URL/me/player/queue")
             if (response.statusCode !in 200..299) {
@@ -334,8 +338,11 @@ class WebAPIClient(
             Log.w(KarooTunesExtension.TAG, "Cancelled queue action", e)
             null
         } catch (e: Throwable) {
-            karooSystemServiceProvider.showError("Queue", e.message ?: "Failed to get queue", e)
-            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e(KarooTunesExtension.TAG, "Failed to get queue", e)
+            if (notifyOnError) {
+                karooSystemServiceProvider.showError("Queue", e.message ?: "Failed to get queue", e)
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            }
             null
         }
     }

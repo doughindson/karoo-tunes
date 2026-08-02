@@ -1,6 +1,5 @@
 package com.doughindson.karootunes.screens
 
-import com.doughindson.karootunes.AutoVolumeConfig
 import com.doughindson.karootunes.auth.TokenResponse
 import com.doughindson.karootunes.jsonWithUnknownKeys
 import kotlinx.serialization.Serializable
@@ -13,8 +12,7 @@ data class KarooTunesSettings(
     val downloadThumbnailsViaCompanion: Boolean = true,
     val highResThumbnails: Boolean = false,
     val useLocalSpotifyIfAvailable: Boolean = true,
-    val onlyRefreshOnActivePage: Boolean = true,
-    val autoVolumeConfig: AutoVolumeConfig = AutoVolumeConfig()
+    val onlyRefreshOnActivePage: Boolean = true
 ){
     companion object {
         val defaultSettings = jsonWithUnknownKeys.encodeToString(KarooTunesSettings())

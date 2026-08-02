@@ -18,10 +18,8 @@ import com.doughindson.karootunes.spotify.PlayerStateProvider
 import com.doughindson.karootunes.spotify.ThumbnailCache
 import com.doughindson.karootunes.spotify.WebAPIClient
 import io.hammerhead.karooext.KarooSystemService
-import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.InRideAlert
 import io.hammerhead.karooext.models.RideState
-import io.hammerhead.karooext.models.StreamState
 import io.hammerhead.karooext.models.UserProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +38,6 @@ import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
-import kotlin.math.roundToInt
 
 class KarooSystemServiceProvider(private val context: Context) {
     val karooSystemService: KarooSystemService = KarooSystemService(context)
@@ -114,14 +111,6 @@ class KarooSystemServiceProvider(private val context: Context) {
         }
     }
 
-    fun streamSpeed(): Flow<Int> {
-        return karooSystemService.streamDataFlow(DataType.Type.SMOOTHED_3S_AVERAGE_SPEED)
-            .map { (it as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0 }
-            .map { it.roundToInt() } // Round to nearest meter per second
-            .distinctUntilChanged()
-            .throttle(1_000L) // Throttle to 1 second
-    }
-
     fun showError(header: String, message: String, e: Throwable? = null) {
         var errorMessageString = message
 
@@ -149,7 +138,6 @@ val appModule = module {
     singleOf(::PlayerDataType)
     singleOf(::WebAPIClient)
     singleOf(::ThumbnailCache)
-    singleOf(::AutoVolume)
     singleOf(::LocalClient)
     singleOf(::PlayerStateProvider)
     singleOf(::PlayerInPreviewModeProvider)

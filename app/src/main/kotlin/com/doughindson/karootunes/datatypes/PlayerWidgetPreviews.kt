@@ -67,9 +67,33 @@ fun PlayerWidgetMidPageStateBPreview() {
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
-@Preview(widthDp = 200, heightDp = 60)
+@Preview(widthDp = 480, heightDp = 140)
 @Composable
-fun PlayerWidgetCompactPreview() {
+fun PlayerWidgetSingleFieldStateAPreview() {
     val context = LocalContext.current
-    PlayerWidgetCompact(context, sampleStatePlaying, PlayerSize.SINGLE_FIELD, false)
+    PlayerWidgetSingleFieldRedesign(context, sampleStatePlaying, false, 480.dp, 140.dp)
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 480, heightDp = 140)
+@Composable
+fun PlayerWidgetSingleFieldStateBPreview() {
+    val context = LocalContext.current
+    PlayerWidgetSingleFieldRedesign(context, sampleStatePlaying.copy(isInOptionsMenu = true), false, 480.dp, 140.dp)
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 480, heightDp = 190)
+@Composable
+fun PlayerWidgetSmallStateAPreview() {
+    val context = LocalContext.current
+    PlayerWidgetSmallRedesign(context, sampleStatePlaying, false, 480.dp, 190.dp)
+}
+
+@OptIn(ExperimentalGlancePreviewApi::class)
+@Preview(widthDp = 480, heightDp = 190)
+@Composable
+fun PlayerWidgetSmallStateBPreview() {
+    val context = LocalContext.current
+    PlayerWidgetSmallRedesign(context, sampleStatePlaying.copy(isInOptionsMenu = true), false, 480.dp, 190.dp)
 }

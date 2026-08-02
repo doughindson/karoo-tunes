@@ -45,7 +45,6 @@ import kotlin.time.TimeSource
 class KarooTunesServices(private val webAPIClient: WebAPIClient,
                              private val apiClientProvider: APIClientProvider,
                              private val thumbnailCache: ThumbnailCache,
-                             private val autoVolume: AutoVolume,
                              private val localClient: LocalClient,
                              private val playerStateProvider: PlayerStateProvider,
                              private val playerInPreviewModeProvider: PlayerInPreviewModeProvider,
@@ -61,7 +60,6 @@ class KarooTunesServices(private val webAPIClient: WebAPIClient,
                 launch { startPlayerAdvanceJob() }
                 launch { startThumbnailCleanupJob() }
                 launch { startLocalSpotifyJob() }
-                launch { startAutoVolumeJob() }
                 launch { startOptionsMenuAutoCollapseJob() }
             }
         }
@@ -69,10 +67,6 @@ class KarooTunesServices(private val webAPIClient: WebAPIClient,
 
     fun cancelJobs(){
         scope.cancel()
-    }
-
-    private suspend fun startAutoVolumeJob() {
-        autoVolume.setAutoVolume()
     }
 
     // Auto-collapses the MEDIUM/SMALL widget's expanded like/shuffle/library panel 3s after it's
@@ -304,7 +298,7 @@ class KarooTunesServices(private val webAPIClient: WebAPIClient,
                 val newUpcomingTracks = if (shouldRefreshQueue) {
                     val settings = karooSystem.streamSettings().first()
 
-                    webAPIClient.getPlayerQueue()?.queue?.take(3)?.map { queueItem ->
+                    webAPIClient.getPlayerQueue(notifyOnError = false)?.queue?.take(3)?.map { queueItem ->
                         val images = queueItem.images ?: queueItem.album?.images
                         val url = if (settings.highResThumbnails) {
                             images?.getOrNull(1)?.url ?: images?.lastOrNull()?.url

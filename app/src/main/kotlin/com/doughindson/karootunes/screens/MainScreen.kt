@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -33,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -51,7 +48,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -60,8 +56,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.doughindson.karootunes.AutoVolume
-import com.doughindson.karootunes.AutoVolumeConfig
 import com.doughindson.karootunes.KarooTunesExtension
 import com.doughindson.karootunes.KarooTunesServices
 import com.doughindson.karootunes.KarooSystemServiceProvider
@@ -74,10 +68,7 @@ import com.doughindson.karootunes.spotify.LocalClient
 import com.doughindson.karootunes.spotify.LocalClientConnectionState
 import com.doughindson.karootunes.spotify.PlayerInPreviewModeProvider
 import io.hammerhead.karooext.models.HardwareType
-import io.hammerhead.karooext.models.UserProfile
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.koin.compose.koinInject
@@ -87,7 +78,6 @@ import kotlin.math.roundToInt
 @Composable
 fun MainScreen(onFinish: () -> Unit) {
     val localClient = koinInject<LocalClient>()
-    val autoVolume = koinInject<AutoVolume>()
     val karooSystemServiceProvider = koinInject<KarooSystemServiceProvider>()
     val oauth2Client = koinInject<OAuth2Client>()
     val viewProvider = koinInject<PlayerViewProvider>()
@@ -109,16 +99,6 @@ fun MainScreen(onFinish: () -> Unit) {
     var playerPreviewDialogVisible by remember { mutableStateOf(false) }
     var onlyRefreshOnActivePage by remember { mutableStateOf(true) }
 
-    var isImperial by remember { mutableStateOf(false) }
-
-    var autoVolumeEnabled by remember { mutableStateOf(false) }
-    var autoVolumeMinSpeed by remember { mutableStateOf("0") }
-    var autoVolumeMaxSpeed by remember { mutableStateOf("0") }
-    var autoVolumeMinVolume by remember { mutableStateOf("0") }
-    var autoVolumeMaxVolume by remember { mutableStateOf("100") }
-
-    val currentSpeed by karooSystemServiceProvider.streamSpeed().collectAsStateWithLifecycle(0)
-
     LaunchedEffect(Unit) {
         while (true){
             delay(30_000L)
@@ -127,20 +107,11 @@ fun MainScreen(onFinish: () -> Unit) {
 
     suspend fun updateSettings(){
         karooSystemServiceProvider.saveSettings { settings ->
-            val minSpeedSetting = (autoVolumeMinSpeed.toIntOrNull()?.toFloat()?.div((if(isImperial) 2.23694f else 3.6f))) ?: AutoVolumeConfig.DEFAULT_MIN_VOLUME_AT_SPEED
-            val maxSpeedSetting = (autoVolumeMaxSpeed.toIntOrNull()?.toFloat()?.div((if(isImperial) 2.23694f else 3.6f))) ?: AutoVolumeConfig.DEFAULT_MAX_VOLUME_AT_SPEED
-
             settings.copy(welcomeDialogAccepted = true,
                 downloadThumbnailsViaCompanion = downloadThumbnails,
                 useLocalSpotifyIfAvailable = enableLocalSpotify,
                 highResThumbnails = highResThumbnails,
-                onlyRefreshOnActivePage = onlyRefreshOnActivePage,
-                autoVolumeConfig = AutoVolumeConfig(
-                    enabled = autoVolumeEnabled,
-                    minVolumeAtSpeed = minSpeedSetting,
-                    maxVolumeAtSpeed = maxSpeedSetting,
-                    minVolume = autoVolumeMinVolume.toIntOrNull()?.div(100f) ?: AutoVolumeConfig.DEFAULT_MIN_VOLUME,
-                    maxVolume = autoVolumeMaxVolume.toIntOrNull()?.div(100f) ?: AutoVolumeConfig.DEFAULT_MAX_VOLUME)
+                onlyRefreshOnActivePage = onlyRefreshOnActivePage
             )
         }
     }
@@ -188,21 +159,7 @@ fun MainScreen(onFinish: () -> Unit) {
             highResThumbnails = settings.highResThumbnails
             enableLocalSpotify = settings.useLocalSpotifyIfAvailable
             onlyRefreshOnActivePage = settings.onlyRefreshOnActivePage
-            autoVolumeEnabled = settings.autoVolumeConfig.enabled
-            autoVolumeMinVolume = (settings.autoVolumeConfig.minVolume * 100).roundToInt().toString()
-            autoVolumeMaxVolume = (settings.autoVolumeConfig.maxVolume * 100).roundToInt().toString()
-            autoVolumeMinSpeed = (if(isImperial) settings.autoVolumeConfig.minVolumeAtSpeed * 2.23694f else settings.autoVolumeConfig.minVolumeAtSpeed * 3.6f).roundToInt().toString()
-            autoVolumeMaxSpeed = (if(isImperial) settings.autoVolumeConfig.maxVolumeAtSpeed * 2.23694f else settings.autoVolumeConfig.maxVolumeAtSpeed * 3.6f).roundToInt().toString()
         }
-    }
-
-    LaunchedEffect(Unit) {
-        karooSystemServiceProvider.streamUserProfile()
-            .combine(karooSystemServiceProvider.streamSettings()) { profile, settings -> profile to settings}
-            .distinctUntilChanged()
-            .collect { (profile, _) ->
-                isImperial = profile.preferredUnit.distance == UserProfile.PreferredUnit.UnitType.IMPERIAL
-            }
     }
 
     Box(modifier = Modifier.fillMaxSize()){
@@ -301,75 +258,6 @@ fun MainScreen(onFinish: () -> Unit) {
                         }
                     }
 
-                    if (enableLocalSpotify && connectionState != LocalClientConnectionState.NotInstalled && settingsInitialized){
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Switch(checked = autoVolumeEnabled, onCheckedChange = {
-                                autoVolumeEnabled = it
-                                runBlocking {
-                                    updateSettings()
-                                }
-                            })
-                            Spacer(modifier = Modifier.width(10.dp))
-
-                            Text("Auto set volume based on speed")
-                        }
-
-                        if (autoVolumeEnabled){
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                OutlinedTextField(value = autoVolumeMinSpeed, modifier = Modifier
-                                    .weight(1f)
-                                    .absolutePadding(right = 2.dp),
-                                    onValueChange = { autoVolumeMinSpeed = it },
-                                    label = { Text("Min Speed") },
-                                    suffix = { Text(if (isImperial) "mph" else "kph") },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    singleLine = true
-                                )
-
-                                OutlinedTextField(value = autoVolumeMaxSpeed, modifier = Modifier
-                                    .weight(1f)
-                                    .absolutePadding(left = 2.dp),
-                                    onValueChange = { autoVolumeMaxSpeed = it },
-                                    label = { Text("Max Speed") },
-                                    suffix = { Text(if (isImperial) "mph" else "km/h") },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    singleLine = true
-                                )
-                            }
-
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                OutlinedTextField(value = autoVolumeMinVolume, modifier = Modifier
-                                    .weight(1f)
-                                    .absolutePadding(right = 2.dp),
-                                    onValueChange = { autoVolumeMinVolume = it },
-                                    label = { Text("Min Vol") },
-                                    suffix = { Text("%") },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    singleLine = true
-                                )
-
-                                OutlinedTextField(value = autoVolumeMaxVolume, modifier = Modifier
-                                    .weight(1f)
-                                    .absolutePadding(left = 2.dp),
-                                    onValueChange = { autoVolumeMaxVolume = it },
-                                    label = { Text("Max Vol") },
-                                    suffix = { Text("%") },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    singleLine = true
-                                )
-                            }
-
-                            val currentSpeedInUserUnit = if (isImperial) (currentSpeed * 2.23694f).roundToInt() else (currentSpeed * 3.6f).roundToInt()
-                            val currentUserSpeedUnit = if (isImperial) "mph" else "km/h"
-                            val currentAutoVolume = 100 * autoVolume.getVolumeForSpeed(AutoVolumeConfig(enabled = autoVolumeEnabled,
-                                minVolume = autoVolumeMinVolume.toIntOrNull()?.div(100f) ?: AutoVolumeConfig.DEFAULT_MIN_VOLUME,
-                                maxVolume = autoVolumeMaxVolume.toIntOrNull()?.div(100f) ?: AutoVolumeConfig.DEFAULT_MAX_VOLUME,
-                                minVolumeAtSpeed = autoVolumeMinSpeed.toIntOrNull()?.toFloat()?.div((if(isImperial) 2.23694f else 3.6f)) ?: AutoVolumeConfig.DEFAULT_MIN_VOLUME_AT_SPEED,
-                                maxVolumeAtSpeed = autoVolumeMaxSpeed.toIntOrNull()?.toFloat()?.div((if(isImperial) 2.23694f else 3.6f)) ?: AutoVolumeConfig.DEFAULT_MAX_VOLUME_AT_SPEED), currentSpeed.toFloat())
-
-                            Text(text = "Current: $currentSpeedInUserUnit $currentUserSpeedUnit => ${currentAutoVolume.roundToInt()}%")
-                        }
-                    }
                 }
 
                 if (token != null && settingsInitialized) {
@@ -495,7 +383,10 @@ fun MainScreen(onFinish: () -> Unit) {
             val heightFraction = when (previewPlayerSize) {
                 PlayerSize.FULL_PAGE -> 1f
                 PlayerSize.MEDIUM -> 0.4f
-                PlayerSize.SMALL -> 0.25f
+                // Above the SMALL layout's 190dp minimum-height threshold in PlayerViewProvider,
+                // so this cycle option actually previews the Small design rather than always
+                // falling back to Single Field.
+                PlayerSize.SMALL -> 0.55f
                 PlayerSize.SINGLE_FIELD -> 0.12f
             }
             val fieldHeightPx = (fullSizePx.second * heightFraction).roundToInt()

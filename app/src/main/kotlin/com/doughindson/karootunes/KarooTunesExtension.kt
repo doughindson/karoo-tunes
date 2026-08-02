@@ -12,7 +12,7 @@ class KarooTunesExtension : KarooExtension("karoo-tunes", BuildConfig.VERSION_NA
     }
 
     private val servicesProvider: KarooTunesServices = KarooTunesServices(
-        get(), get(), get(), get(), get(), get(), get(), get(), get())
+        get(), get(), get(), get(), get(), get(), get(), get())
     private val playerDataType: PlayerDataType by inject()
 
     override val types: List<DataTypeImpl> = listOf(playerDataType)

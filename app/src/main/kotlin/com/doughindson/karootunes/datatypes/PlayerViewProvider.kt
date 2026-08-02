@@ -79,67 +79,217 @@ fun formatMs(ms: Int?): String {
 }
 
 /**
- * Compact fallback layout: used for SINGLE_FIELD - just track/artist text, play/next and a
- * thin progress bar.
+ * Renders either the 4 transport/options buttons (Previous / Play-Pause / Next / dots-toggle) or,
+ * while [PlayerState.isInOptionsMenu] is true, the 3 like/shuffle/library buttons - reused by both
+ * [PlayerWidgetSingleFieldRedesign] and [PlayerWidgetSmallRedesign] since both put this same
+ * toggleable row in a fixed-height band and only differ in what surrounds it.
  */
 @Composable
-fun PlayerWidgetCompact(
+private fun TransportOrOptionsRow(
     context: Context,
     appState: PlayerState,
-    playerSize: PlayerSize,
-    baseDisabled: Boolean
+    baseDisabled: Boolean,
+    modifier: GlanceModifier,
+    contentWidth: Dp,
+    rowHeight: Dp
 ) {
-    Column(
-        modifier = GlanceModifier.fillMaxSize().padding(2.dp),
-        verticalAlignment = Alignment.Vertical.CenterVertically
+    val mutedTextColor = ColorProvider(
+        Color(context.getColor(R.color.lighterGray)),
+        Color(context.getColor(R.color.lighterGray))
+    )
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.Vertical.CenterVertically,
+        horizontalAlignment = Alignment.Horizontal.CenterHorizontally
     ) {
-        Text(
-            appState.isPlayingTrackName ?: "Unknown",
-            style = TextStyle(
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = ColorProvider(Color.Black, Color.White)
-            ),
-            maxLines = 1
-        )
-        Text(
-            appState.isPlayingArtistName ?: "Waiting for playback...",
-            style = TextStyle(
-                fontSize = 14.sp,
-                color = ColorProvider(Color.Black, Color.White)
-            ),
-            maxLines = 1
-        )
+        if (appState.isInOptionsMenu) {
+            // 3 rectangles filling the same band - same 0.12-of-height gap ratio and
+            // fill-then-absorb-remainder-by-subtraction math used for MEDIUM's state B.
+            val gap = kotlin.math.floor(rowHeight.value * 0.12f).dp
+            val buttonWidth = kotlin.math.floor((contentWidth.value - gap.value * 2f) / 3f).dp
+            val lastButtonWidth = contentWidth - gap * 2 - buttonWidth * 2
+            val iconSize = kotlin.math.min(36f, rowHeight.value * 0.55f).dp
 
-        Row(
-            modifier = GlanceModifier.fillMaxWidth().padding(2.dp),
-            verticalAlignment = Alignment.Vertical.CenterVertically,
-            horizontalAlignment = Alignment.Horizontal.CenterHorizontally
-        ) {
+            val isLiked = appState.isTrackLiked == true
+            SquareUtilityButton(
+                context,
+                if (isLiked) R.drawable.ic_favorite else R.drawable.ic_favorite_border,
+                if (isLiked) "Remove from Liked Songs" else "Add to Liked Songs",
+                GlanceModifier.size(buttonWidth, rowHeight),
+                disabled = baseDisabled || appState.pendingActions.contains(PlayerAction.ADD_TO_LIBRARY),
+                toggledOff = !isLiked,
+                iconSize = iconSize
+            ) { actionRunCallback(AddToLikedSongsAction::class.java) }
+
+            Spacer(modifier = GlanceModifier.width(gap))
+
+            SquareUtilityButton(
+                context,
+                R.drawable.ic_shuffle,
+                "Shuffle",
+                GlanceModifier.size(buttonWidth, rowHeight),
+                disabled = baseDisabled || appState.pendingActions.contains(PlayerAction.TOGGLE_SHUFFLE),
+                toggledOff = appState.isShuffling != true,
+                iconSize = iconSize
+            ) { actionRunCallback(ToggleShuffleAction::class.java) }
+
+            Spacer(modifier = GlanceModifier.width(gap))
+
+            SquareUtilityButton(
+                context,
+                R.drawable.ic_library_music,
+                "Library",
+                GlanceModifier.size(lastButtonWidth, rowHeight),
+                disabled = baseDisabled,
+                iconSize = iconSize
+            ) { actionStartActivity(Intent(context, PlayActivity::class.java)) }
+        } else {
+            // 4 buttons filling the full content width (not capped to stay square) - height
+            // fills the whole row too, so the buttons are as big as the field allows on both
+            // axes, matching the SVG's intent to maximize button size.
+            val gapRatio = 0.1333f
+            val buttonWidth = kotlin.math.floor(contentWidth.value / (4f + 3f * gapRatio)).dp
+            val gap = kotlin.math.floor(buttonWidth.value * gapRatio).dp
+            val iconSize = kotlin.math.min(36f, kotlin.math.min(buttonWidth.value, rowHeight.value) * 0.55f).dp
+
+            TransportPillButton(
+                icon = R.drawable.ic_skip_previous,
+                background = R.drawable.round_button_bg_gray,
+                iconTint = mutedTextColor,
+                modifier = GlanceModifier.size(buttonWidth, rowHeight),
+                disabled = baseDisabled || appState.pendingActions.contains(PlayerAction.SKIP_PREVIOUS),
+                iconSize = iconSize
+            ) { actionRunCallback(PreviousAction::class.java) }
+
+            Spacer(modifier = GlanceModifier.width(gap))
+
             val playPauseAction = if (appState.isPlaying == true) PlayerAction.PAUSE else PlayerAction.PLAY
-            PlayButton(appState, playerSize, baseDisabled || appState.pendingActions.contains(playPauseAction))
+            TransportPillButton(
+                icon = if (appState.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play_arrow,
+                background = R.drawable.round_button_bg_green,
+                iconTint = ColorProvider(
+                    Color(context.getColor(R.color.black)),
+                    Color(context.getColor(R.color.black))
+                ),
+                modifier = GlanceModifier.size(buttonWidth, rowHeight),
+                disabled = baseDisabled || appState.pendingActions.contains(playPauseAction),
+                iconSize = iconSize
+            ) {
+                if (appState.isPlaying == true) actionRunCallback(PauseAction::class.java) else actionRunCallback(PlayAction::class.java)
+            }
 
-            val nextDisabled = baseDisabled || appState.pendingActions.contains(PlayerAction.SKIP_NEXT)
-            Image(
-                ImageProvider(R.drawable.skip_next_regular_132),
-                "Next",
-                modifier = GlanceModifier.size(40.dp).padding(10.dp)
-                    .let { if (nextDisabled) it else it.clickable(actionRunCallback(NextAction::class.java)) },
-                colorFilter = ColorFilter.tint(
-                    ColorProvider(
-                        Color.Black,
-                        Color.White
-                    )
-                )
-            )
+            Spacer(modifier = GlanceModifier.width(gap))
+
+            TransportPillButton(
+                icon = R.drawable.ic_skip_next,
+                background = R.drawable.round_button_bg_gray,
+                iconTint = mutedTextColor,
+                modifier = GlanceModifier.size(buttonWidth, rowHeight),
+                disabled = baseDisabled || appState.pendingActions.contains(PlayerAction.SKIP_NEXT),
+                iconSize = iconSize
+            ) { actionRunCallback(NextAction::class.java) }
+
+            Spacer(modifier = GlanceModifier.width(gap))
+
+            SquareUtilityButton(
+                context,
+                R.drawable.dots_vertical_rounded_regular_132,
+                "Show options",
+                GlanceModifier.size(buttonWidth, rowHeight),
+                disabled = baseDisabled,
+                iconSize = iconSize
+            ) { actionRunCallback(ToggleOptionsMenuCallback::class.java) }
+        }
+    }
+}
+
+/**
+ * SINGLE_FIELD layout: no room for text, just the one toggleable row of square buttons filling
+ * the whole field.
+ */
+@Composable
+fun PlayerWidgetSingleFieldRedesign(
+    context: Context,
+    appState: PlayerState,
+    baseDisabled: Boolean,
+    availableWidth: Dp,
+    availableHeight: Dp
+) {
+    // Same 12dp on every edge, matching MEDIUM/FULL_PAGE so all sizes line up visually.
+    val outerPadding = 12.dp
+    val contentWidth = availableWidth - outerPadding * 2
+    val rowHeight = availableHeight - outerPadding * 2
+
+    Box(
+        modifier = GlanceModifier.fillMaxSize().padding(outerPadding),
+        contentAlignment = Alignment.Center
+    ) {
+        TransportOrOptionsRow(
+            context,
+            appState,
+            baseDisabled,
+            GlanceModifier.fillMaxWidth().height(rowHeight),
+            contentWidth,
+            rowHeight
+        )
+    }
+}
+
+/**
+ * SMALL layout: track/artist text above the same toggleable button row used by SINGLE_FIELD -
+ * no progress bar (there's no room once both rows are given enough height to be legible/tappable).
+ */
+@Composable
+fun PlayerWidgetSmallRedesign(
+    context: Context,
+    appState: PlayerState,
+    baseDisabled: Boolean,
+    availableWidth: Dp,
+    availableHeight: Dp
+) {
+    val mutedTextColor = ColorProvider(
+        Color(context.getColor(R.color.lighterGray)),
+        Color(context.getColor(R.color.lighterGray))
+    )
+
+    // Same 12dp on every edge, matching MEDIUM/FULL_PAGE so all sizes line up visually.
+    val outerPadding = 12.dp
+    val verticalGap = 10.dp
+    // Just the track name now (no artist line), so this only needs to fit one 20sp line.
+    val textRowHeight = 28.dp
+
+    val contentWidth = availableWidth - outerPadding * 2
+    val rowHeight = availableHeight - outerPadding * 2 - verticalGap - textRowHeight
+
+    Column(modifier = GlanceModifier.fillMaxSize().padding(outerPadding)) {
+        val isChangingTrack = appState.pendingActions.contains(PlayerAction.SKIP_NEXT) ||
+            appState.pendingActions.contains(PlayerAction.SKIP_PREVIOUS)
+        val showLoadingState = isChangingTrack && appState.isPlayingTrackName.isNullOrBlank() && appState.error == null
+        val trackNameColor = if (showLoadingState) mutedTextColor else ColorProvider(Color.White, Color.White)
+
+        val displayedTrackName = if (showLoadingState) {
+            if (appState.pendingActions.contains(PlayerAction.SKIP_NEXT)) "Loading next track" else "Loading previous track"
+        } else {
+            appState.isPlayingTrackName ?: (appState.error?.title ?: "Unknown")
         }
 
-        val progress = (appState.playProgressInMs?.toFloat()
-            ?: 0.0f) / (appState.currentTrackLengthInMs?.toFloat() ?: 1.0f)
-        LinearProgressIndicator(
-            progress = progress,
-            modifier = GlanceModifier.fillMaxWidth().padding(2.dp)
-                .height(10.dp)
+        Text(
+            displayedTrackName,
+            modifier = GlanceModifier.fillMaxWidth().height(textRowHeight),
+            style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, color = trackNameColor),
+            maxLines = 1
+        )
+
+        Spacer(modifier = GlanceModifier.height(verticalGap))
+
+        TransportOrOptionsRow(
+            context,
+            appState,
+            baseDisabled,
+            GlanceModifier.fillMaxWidth().height(rowHeight),
+            contentWidth,
+            rowHeight
         )
     }
 }
@@ -637,18 +787,28 @@ class PlayerViewProvider(private val apiClientProvider: APIClientProvider,
 
                 val baseDisabled = appState.isPlaying == null
 
+                // The SMALL layout (text line + button row) needs at least this much height to
+                // look right - Karoo's own gridSize-based SMALL category can still hand us less
+                // than that on some grid configs, so fall back to the SINGLE_FIELD layout (one
+                // row, no text) whenever the real allocated height comes in under this threshold.
+                val smallReferenceHeight = 180.dp
+
                 val result =
                     if (playerSize == PlayerSize.FULL_PAGE) {
                         glance.compose(context, dpSize) {
                             PlayerWidgetFullPageRedesign(context, appState, cachedThumbnail, baseDisabled, dpSize.width)
                         }
-                    } else if (playerSize == PlayerSize.MEDIUM || playerSize == PlayerSize.SMALL) {
+                    } else if (playerSize == PlayerSize.MEDIUM) {
                         glance.compose(context, dpSize) {
                             PlayerWidgetMidPageRedesign(context, appState, baseDisabled, dpSize.width, dpSize.height)
                         }
+                    } else if (playerSize == PlayerSize.SMALL && dpSize.height >= smallReferenceHeight) {
+                        glance.compose(context, dpSize) {
+                            PlayerWidgetSmallRedesign(context, appState, baseDisabled, dpSize.width, dpSize.height)
+                        }
                     } else {
                         glance.compose(context, dpSize) {
-                            PlayerWidgetCompact(context, appState, playerSize, baseDisabled)
+                            PlayerWidgetSingleFieldRedesign(context, appState, baseDisabled, dpSize.width, dpSize.height)
                         }
                     }
 
