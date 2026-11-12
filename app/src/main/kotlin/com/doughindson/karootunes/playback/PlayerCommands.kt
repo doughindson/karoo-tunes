@@ -46,6 +46,9 @@ class PlayerCommands(
                 PlayerCommand.TOGGLE_LIKE -> controller.setLiked(listOfNotNull(before.track?.uri), after.isLiked == true)
                 PlayerCommand.TOGGLE_OPTIONS -> ApiResult.Ok(Unit)
             }
+            if (result is ApiResult.Ok && (command == PlayerCommand.PLAY || command == PlayerCommand.PAUSE)) {
+                repository.expectPlaying(command == PlayerCommand.PLAY)
+            }
             if (result is ApiResult.Failure) {
                 Log.w(TAG, "$command failed: ${result.error}")
                 // Polls don't report liked state, so undo it here; other commands are corrected by the next poll.

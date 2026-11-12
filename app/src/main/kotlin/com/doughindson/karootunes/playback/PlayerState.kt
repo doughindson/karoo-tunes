@@ -35,6 +35,12 @@ enum class PlayerCommand {
     PLAY, PAUSE, NEXT, PREVIOUS, SEEK_BACK, SEEK_FORWARD, TOGGLE_SHUFFLE, CYCLE_REPEAT, TOGGLE_LIKE, TOGGLE_OPTIONS
 }
 
+/**
+ * After a play/pause that Spotify accepted, its reported state can lag by a few seconds (the phone
+ * takes a moment to actually start). Until [untilMs], trust the command over a refresh that disagrees.
+ */
+data class PlayExpectation(val isPlaying: Boolean, val untilMs: Long)
+
 /** What Spotify last reported. */
 data class PlaybackSnapshot(
     val track: Track?,

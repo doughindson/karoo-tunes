@@ -133,4 +133,22 @@ class PlayerReducerTest {
         assertFalse(PlayerReducer.isAllowed(failed, PlayerCommand.PLAY))
         assertEquals("Start playing Spotify on your phone", PlayerReducer.noPlayer(failed).error?.message)
     }
+
+    @Test
+    fun `a refresh that lags behind an accepted play keeps the button as pressed`() {
+        val expectation = PlayExpectation(isPlaying = true, untilMs = 10_000)
+
+        val (stale, stillExpected) = PlayerReducer.reconcile(snapshot(track(1), playing = false), expectation, now = 4_000)
+        assertTrue(stale.isPlaying)
+        assertEquals(expectation, stillExpected)
+
+        val (caughtUp, done) = PlayerReducer.reconcile(snapshot(track(1), playing = true), expectation, now = 6_000)
+        assertTrue(caughtUp.isPlaying)
+        assertNull(done)
+
+        // After the window, Spotify's answer wins (e.g. playback really did stop).
+        val (expired, gone) = PlayerReducer.reconcile(snapshot(track(1), playing = false), expectation, now = 11_000)
+        assertFalse(expired.isPlaying)
+        assertNull(gone)
+    }
 }

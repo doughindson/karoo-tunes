@@ -8,6 +8,16 @@ object PlayerReducer {
     private const val END_OF_TRACK_MARGIN_MS = 2_000
     private const val UPCOMING_LIMIT = 3
 
+    /**
+     * Applies a pending [PlayExpectation] to a fresh [snapshot]. Returns the snapshot to use and the
+     * expectation that still stands: non-null means Spotify hasn't caught up yet, so check again soon.
+     */
+    fun reconcile(snapshot: PlaybackSnapshot, expectation: PlayExpectation?, now: Long): Pair<PlaybackSnapshot, PlayExpectation?> =
+        when {
+            expectation == null || now > expectation.untilMs || snapshot.isPlaying == expectation.isPlaying -> snapshot to null
+            else -> snapshot.copy(isPlaying = expectation.isPlaying) to expectation
+        }
+
     fun applySnapshot(state: PlayerState, snapshot: PlaybackSnapshot, now: Long): PlayerState {
         val trackChanged = snapshot.track?.uri != state.track?.uri
         return state.copy(

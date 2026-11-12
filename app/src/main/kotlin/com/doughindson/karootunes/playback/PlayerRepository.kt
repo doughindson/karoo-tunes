@@ -51,6 +51,9 @@ class PlayerRepository(
 
     private val refreshRequests = Channel<Unit>(Channel.CONFLATED)
     private val commandsInFlight = MutableStateFlow(0)
+
+    @Volatile
+    private var playExpectation: PlayExpectation? = null
     private var job: Job? = null
 
     @Synchronized
@@ -81,6 +84,11 @@ class PlayerRepository(
     fun updateAndGet(transform: (PlayerState) -> PlayerState): PlayerState = _state.updateAndGet(transform)
 
     /** While a command is in flight, poll results may predate it and would undo the optimistic update. */
+    /** A play/pause was accepted: don't let a lagging refresh flip the button back for a few seconds. */
+    fun expectPlaying(isPlaying: Boolean) {
+        playExpectation = PlayExpectation(isPlaying, now() + STALE_READ_WINDOW_MS)
+    }
+
     fun beginCommand() = commandsInFlight.update { it + 1 }
     fun endCommand() = commandsInFlight.update { it - 1 }
 
@@ -142,16 +150,29 @@ class PlayerRepository(
         val result = controller.snapshot()
         Log.d(TAG, "Poll: ${result.describe()}")
         if (commandsInFlight.value > 0) return
+        var staleRead = false
         _state.update { current ->
             when (result) {
-                is ApiResult.Ok -> PlayerReducer.applySnapshot(current, result.value, now())
-                ApiResult.NoContent -> PlayerReducer.noPlayer(current)
+                is ApiResult.Ok -> {
+                    val (snapshot, stillExpected) = PlayerReducer.reconcile(result.value, playExpectation, now())
+                    playExpectation = stillExpected
+                    staleRead = stillExpected != null
+                    PlayerReducer.applySnapshot(current, snapshot, now())
+                }
+                ApiResult.NoContent -> {
+                    playExpectation = null
+                    PlayerReducer.noPlayer(current)
+                }
                 is ApiResult.Failure -> when (val error = result.error) {
                     is ApiError.NotLoggedIn -> PlayerReducer.notLoggedIn()
                     is ApiError.Offline -> PlayerReducer.refreshFailed(current, PlayerError("Offline", error.message))
                     else -> PlayerReducer.refreshFailed(current, PlayerError("Spotify error", error.message))
                 }
             }
+        }
+        if (staleRead) {
+            Log.d(TAG, "Spotify hasn't caught up with play/pause yet; checking again")
+            requestRefresh()
         }
         _state.value.track?.let { track ->
             val highRes = settings.current().highResThumbnails
@@ -188,5 +209,6 @@ class PlayerRepository(
         const val COMMAND_SETTLE_MS = 2_500L
         const val NO_PLAYER_INTERVAL_MS = 10_000L
         const val LIKED_LOOKUP_DELAY_MS = 3_000L
+        const val STALE_READ_WINDOW_MS = 10_000L
     }
 }
