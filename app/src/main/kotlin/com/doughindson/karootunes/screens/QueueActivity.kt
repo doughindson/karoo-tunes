@@ -2,12 +2,12 @@ package com.doughindson.karootunes.screens
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import com.doughindson.karootunes.theme.AppTheme
 import io.hammerhead.karooext.KarooSystemService
 import org.koin.compose.KoinContext
 
-class QueueActivity : AppCompatActivity() {
+class QueueActivity : ComponentActivity() {
     val karooSystemService = KarooSystemService(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -12,7 +12,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:name=".KarooTunesApplication"
-        android:theme="@style/Theme.AppCompat">
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
             android:name="com.doughindson.karootunes.MainActivity"
             android:theme="@style/SplashTheme"

@@ -2,7 +2,7 @@ package com.doughindson.karootunes.screens
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
@@ -105,7 +105,7 @@ fun NavScreen(karooSystemService: KarooSystemService, finish: () -> Unit, navCon
     }
 }
 
-class PlayActivity : AppCompatActivity() {
+class PlayActivity : ComponentActivity() {
     private val karooSystemService = KarooSystemService(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
