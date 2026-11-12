@@ -10,7 +10,6 @@ import com.doughindson.karootunes.data.spotify.ApiResult
 interface PlaybackController {
     /** [ApiResult.NoContent] means Spotify has no active player. */
     suspend fun snapshot(): ApiResult<PlaybackSnapshot>
-    suspend fun upcoming(): ApiResult<List<Track>>
     suspend fun isLiked(uri: String): ApiResult<Boolean>
 
     /** Resumes playback; with [deviceId], on that device even when Spotify has gone idle. */

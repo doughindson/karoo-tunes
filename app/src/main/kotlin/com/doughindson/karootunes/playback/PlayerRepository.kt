@@ -59,7 +59,6 @@ class PlayerRepository(
         job = appScope.launch {
             launch { pollWhileVisible() }
             launch { lookUpLikedState() }
-            launch { prefetchUpcoming() }
             launch {
                 auth.isLoggedIn.collect { loggedIn ->
                     if (!loggedIn) _state.value = PlayerReducer.notLoggedIn()
@@ -159,17 +158,6 @@ class PlayerRepository(
             }
     }
 
-    private suspend fun prefetchUpcoming() {
-        _state.map { it.track?.uri }
-            .distinctUntilChanged()
-            .filter { it != null }
-            .collectLatest { uri ->
-                val upcoming = (controller.upcoming() as? ApiResult.Ok)?.value ?: return@collectLatest
-                _state.update { if (it.track?.uri == uri) it.copy(upcoming = upcoming) else it }
-                val highRes = settings.current().highResThumbnails
-                upcoming.mapNotNull { it.imageUrl(highRes) }.forEach(thumbnails::prefetch)
-            }
-    }
 
     private fun ApiResult<PlaybackSnapshot>.describe(): String = when (this) {
         is ApiResult.Ok -> "${if (value.isPlaying) "playing" else "paused"} ${value.track?.name} on ${value.deviceName}"

@@ -76,7 +76,11 @@ data class PlayerState(
     val disallowed: Set<PlayerCommand> = emptySet(),
     /** Shown instantly on Previous while the real skip is in flight. */
     val previousTrack: Track? = null,
-    /** Shown instantly on Next while the real skip is in flight. */
+    /**
+     * Shown instantly on Next while the real skip is in flight. Only filled by going back with
+     * Previous: fetching Spotify's queue in the background is too slow through the companion app,
+     * where it blocks button presses for many seconds.
+     */
     val upcoming: List<Track> = emptyList(),
     val error: PlayerError? = null,
     /** The device Spotify last played on, so Play can resume there after Spotify goes idle. */

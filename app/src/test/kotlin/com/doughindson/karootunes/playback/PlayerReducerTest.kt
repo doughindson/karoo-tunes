@@ -124,4 +124,13 @@ class PlayerReducerTest {
         assertEquals("No active player", idle.error?.title)
         assertFalse(PlayerReducer.isAllowed(idle, PlayerCommand.PLAY))
     }
+
+    @Test
+    fun `a device that could not be woken is no longer offered for resuming`() {
+        val idle = PlayerReducer.noPlayer(playing.copy(lastDeviceId = "iphone", lastDeviceName = "iPhone"))
+        val failed = PlayerReducer.resumeFailed(idle)
+        assertNull(failed.lastDeviceId)
+        assertFalse(PlayerReducer.isAllowed(failed, PlayerCommand.PLAY))
+        assertEquals("Start playing Spotify on your phone", PlayerReducer.noPlayer(failed).error?.message)
+    }
 }

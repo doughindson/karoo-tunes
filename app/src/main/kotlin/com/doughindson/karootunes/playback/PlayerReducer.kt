@@ -48,6 +48,14 @@ object PlayerReducer {
         error = PlayerError("Not logged in", "Open Karoo Tunes to log in to Spotify"),
     )
 
+    /** Spotify couldn't wake the last device (e.g. iOS suspended Spotify after pausing): stop offering to resume there. */
+    fun resumeFailed(state: PlayerState): PlayerState = state.copy(
+        isPlaying = false,
+        lastDeviceId = null,
+        lastDeviceName = null,
+        error = PlayerError("No active player", "Start playing Spotify on your phone"),
+    )
+
     /** A refresh failed: keep showing what we had, plus the reason. */
     fun refreshFailed(state: PlayerState, error: PlayerError): PlayerState = state.copy(error = error)
 

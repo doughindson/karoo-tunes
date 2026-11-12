@@ -14,8 +14,6 @@ class WebPlayback(private val api: SpotifyWebApi) : PlaybackController {
 
     override suspend fun snapshot(): ApiResult<PlaybackSnapshot> = api.playbackState().map { it.toSnapshot() }
 
-    override suspend fun upcoming(): ApiResult<List<Track>> =
-        api.queue().map { response -> response.queue.take(3).map { it.toTrack() } }
 
     override suspend fun isLiked(uri: String) = api.isSaved(uri)
 

@@ -48,7 +48,16 @@ class PlayerCommands(
                 if (command == PlayerCommand.TOGGLE_LIKE) {
                     repository.updateAndGet { if (it.track?.uri == before.track?.uri) it.copy(isLiked = before.isLiked) else it }
                 }
-                alertFor(command, result.error)?.let { (title, message) -> karoo.showAlert(title, message) }
+                val resumingIdle = command == PlayerCommand.PLAY && !before.hasPlayer
+                if (resumingIdle && result.error.isDeviceGone()) {
+                    repository.updateAndGet { PlayerReducer.resumeFailed(it) }
+                    karoo.showAlert(
+                        command.alertTitle(),
+                        "Spotify on ${before.lastDeviceName ?: "your phone"} has gone to sleep. Start playing on the phone; the Karoo can control it again from there.",
+                    )
+                } else {
+                    alertFor(command, result.error)?.let { (title, message) -> karoo.showAlert(title, message) }
+                }
             }
         } finally {
             repository.endCommand()
@@ -84,7 +93,7 @@ class PlayerCommands(
             val stateMismatch = error.status == 403 && error.reason != "PREMIUM_REQUIRED" &&
                 (command == PlayerCommand.PLAY || command == PlayerCommand.PAUSE)
             if (stateMismatch) return null
-            if (error.status == 404 || error.reason == "NO_ACTIVE_DEVICE") {
+            if (error.isDeviceGone()) {
                 return command.alertTitle() to "Spotify isn't running on your phone. Open Spotify there and start playing."
             }
             if (error.reason == "PREMIUM_REQUIRED") {
@@ -93,6 +102,8 @@ class PlayerCommands(
         }
         return command.alertTitle() to error.message
     }
+
+    private fun ApiError.isDeviceGone() = this is ApiError.Http && (status == 404 || reason == "NO_ACTIVE_DEVICE")
 
     private fun PlayerCommand.alertTitle() = when (this) {
         PlayerCommand.PLAY -> "Play"
