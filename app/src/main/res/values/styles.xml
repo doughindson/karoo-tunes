@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="SplashTheme" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@drawable/launch_background</item>
+    <style name="Theme.KarooTunes" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
     </style>
 </resources>

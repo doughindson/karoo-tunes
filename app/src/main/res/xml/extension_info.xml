@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ExtensionInfo
     displayName="@string/extension_name"
-    icon="@drawable/music_regular_132"
+    icon="@drawable/ic_music_note"
     id="karoo-tunes"
     scansDevices="false">
     <DataType
         description="@string/player_description"
         displayName="@string/player"
         graphical="true"
-        icon="@drawable/music_regular_132"
+        icon="@drawable/ic_music_note"
         typeId="player" />
 </ExtensionInfo>

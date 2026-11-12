@@ -1,28 +1,5 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.kts.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# kotlinx.serialization ships its own consumer rules; the app needs no extra keeps.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
-
-# Exclude all com.spotify classes from minification.
--keep class com.spotify.** { *; }
-
--dontwarn com.google.errorprone.annotations.**
--dontwarn com.spotify.base.annotations.**
--dontwarn javax.annotation.**
+# Keep line numbers so crash reports from the Karoo are readable.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

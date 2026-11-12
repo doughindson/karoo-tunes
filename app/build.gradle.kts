@@ -53,6 +53,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             signingConfigs.findByName("release")?.let { signingConfig = it }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
@@ -66,6 +67,13 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    lint {
+        // karoo-ext brings Timber onto the classpath, but the app logs with android.util.Log.
+        disable += "LogNotTimber"
+        // Themed (monochrome) icons need Android 13; the Karoo runs Android 12.
+        disable += "MonochromeLauncherIcon"
     }
 
     testOptions {
@@ -126,9 +134,6 @@ tasks.named("assemble") {
 }
 
 dependencies {
-    implementation(files("libs/spotify-app-remote-release-0.8.0.aar"))
-    implementation(libs.gson)
-
     implementation(libs.hammerhead.karoo.ext)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
@@ -153,4 +158,6 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.paging.common)
+    testImplementation(platform(libs.koin.bom))
+    testImplementation(libs.koin.test)
 }
