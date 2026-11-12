@@ -15,33 +15,41 @@ Compatible with Karoo 3 devices.
 
 ## Features
 
-- Play/pause, skip forward, skip backward, shuffle, repeat, add to queue, view and play playlist, view queue
-- Thumbnails for currently played track and playlists
-- If Spotify is installed on your Karoo: Volume control, automatic volume control based on ride speed
-- To be implemented: search, view album, view artist, podcast selection
+- Works alongside the Karoo's own media controls, which handle play/pause and skip instantly, and adds what only Spotify can do:
+  - **Compact field:** like, shuffle, and open the library
+  - **Medium field:** album art with those three buttons, plus the current track and artist
+  - **Full page:** all of the above plus play/pause and skip (podcasts get back 15 s / forward 30 s instead)
+- Album art, and a library of playlists, Liked Songs, podcasts, saved episodes and the play queue
+- Follows the Karoo's day and night themes
 
 ## Installation
 
 If you are using a Karoo 3, you can use [Hammerhead's sideloading procedure](https://support.hammerhead.io/hc/en-us/articles/31576497036827-Companion-App-Sideloading) to install the app:
 
 1. Using the browser on your phone, long-press [this download link](https://github.com/doughindson/karoo-tunes/releases/latest/download/app-release.apk) and share it with the Hammerhead Companion app.
-2. Your karoo should show an info screen about the app now. Press "Install".
-3. Open the app from the main menu and acknowledge the API usage note.
-4. Set up your data fields as desired.
+2. Your Karoo should show an info screen about the app now. Press "Install".
+3. Open Karoo Tunes from the main menu, acknowledge the note and log in to Spotify.
+4. Add the Karoo Tunes player data field to one of your ride pages. A full page works best.
 
-There are two ways to use this app:
+Karoo Tunes controls Spotify on your phone (or any other Spotify Connect device, such as a computer when training indoors) through the Spotify Web API. It needs an internet connection, which the companion app provides while your phone has mobile data. The player refreshes every 10 seconds while it is on screen, and right after the current track ends. You can also have it refresh every 45 seconds while it is in the active ride profile but on another page, so the current track is already showing when you switch to it; this uses more battery.
 
-- Remote control mode: You can install this extension on your Karoo and control Spotify running on your phone (or any other "Spotify Connect"-enabled device like your computer if you are training indoors). The extension will control the Spotify app via the Spotify Web API, so you need an active internet connection (which is provided by the companion app as long as your phone has mobile data reception). Volume control is not available in this mode. Player state is refreshed every 45 seconds when the player data field is on screen and when the current song ends. You can set the player to always refresh every 45 seconds to reduce the delay when opening the player data page, but this might increase battery usage.
-- Standalone mode: If you have sideloaded Spotify itself onto your Karoo, the extension can be used to directly control the Spotify app, which works without an internet connection. Please note that the "Spotify Lite" variant of the app, which is only available in some countries, will not work. You can then directly pair your bluetooth headphones to the Karoo and thereby also get the radar alerts, TBT sounds etc the Karoo can play over bluetooth. Please note that the Spotify app can not use the companion app to stream new songs while riding, so you have to download the playlists you want to listen to using the Spotify app itself and let it synchronize them while you are within WiFi range. Player state is refreshed instantly in this mode. Make sure your Karoo has a wifi connection on startup so that the Spotify app allows Karoo Tunes to connect; during riding, no active internet connection is required.
+Spotify's Development Mode rules apply: the app owner needs Spotify Premium, and track lists are only available for playlists you own or collaborate on (any playlist can still be played as a whole).
 
-## Usage
+## Development
 
-After installing this app on your Karoo and opening it once from the main menu, you can add a player data field to one of your data pages. It is recommended to use a data field that covers a whole page.
+Requirements: JDK 17+ (Android Studio's bundled JDK works) and, in `local.properties`:
+
+```
+SPOTIFY_CLIENT_ID=<your Spotify app's client ID>
+gpr.user=<GitHub username>
+gpr.key=<GitHub token with read:packages, for karoo-ext>
+```
+
+Build and test with `./gradlew lint testDebugUnitTest assembleDebug`. See [CLAUDE.md](CLAUDE.md) for how the code is organised.
 
 ## Credits
 
 - Forked from [timklge/karoo-spintunes](https://github.com/timklge/karoo-spintunes)
-- Icons are from [boxicons.com](https://boxicons.com) ([MIT-licensed](icon_credits.txt))
-- Uses [Spotify Android SDK](https://github.com/spotify/android-sdk) (Apache2-licensed)
+- Icons are [Material Symbols](https://fonts.google.com/icons) (Apache 2.0)
 - Interfaces with the [Spotify Web API](https://developer.spotify.com/documentation/web-api/)
 - Uses [karoo-ext](https://github.com/hammerheadnav/karoo-ext) (Apache2-licensed)

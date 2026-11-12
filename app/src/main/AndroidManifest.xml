@@ -2,58 +2,42 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- No backups: the auth store holds Spotify tokens, and settings are quick to recreate. -->
     <application
-        android:allowBackup="true"
-        android:icon="@drawable/music_regular_132"
+        android:name=".KarooTunesApplication"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        tools:targetApi="31"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:name=".KarooTunesApplication"
-        android:theme="@style/Theme.AppCompat">
+        android:theme="@style/Theme.KarooTunes">
+
         <activity
-            android:name="com.doughindson.karootunes.MainActivity"
-            android:theme="@style/SplashTheme"
-            android:exported="true">
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".auth.OAuthRedirectActivity"
-            android:theme="@style/SplashTheme"
-            android:exported="true"
-            android:launchMode="singleTask">
+            <!-- Spotify login redirect -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:scheme="karootunes"
-                    android:host="oauth2redirect" />
+                    android:host="oauth2redirect"
+                    android:scheme="karootunes" />
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".screens.PlayActivity"
-            android:theme="@style/SplashTheme"
-            android:exported="true"
-            android:launchMode="singleInstance">
-        </activity>
-
-        <activity
-            android:name=".screens.QueueActivity"
-            android:theme="@style/SplashTheme"
-            android:exported="true"
-            android:launchMode="singleInstance">
-        </activity>
-
         <service
-            android:name="com.doughindson.karootunes.KarooTunesExtension"
+            android:name=".KarooTunesExtension"
             android:exported="true"
             tools:ignore="ExportedService">
             <intent-filter>

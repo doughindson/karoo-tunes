@@ -1,6 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Karoo Tunes</string>
     <string name="extension_name">Karoo Tunes</string>
     <string name="player">Player</string>
-    <string name="player_description">Player widget</string>
+    <string name="player_description">Spotify player controls</string>
+
+    <!-- Widget -->
+    <string name="widget_connecting">Connecting to Spotify…</string>
+    <string name="widget_loading_next">Loading next track</string>
+    <string name="widget_loading_previous">Loading previous track</string>
+    <string name="widget_loading">Loading…</string>
+    <string name="widget_unknown_track">Unknown</string>
+    <string name="action_play">Play</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_next">Next track</string>
+    <string name="action_previous">Previous track</string>
+    <string name="action_seek_back">Back 15 seconds</string>
+    <string name="action_seek_forward">Forward 30 seconds</string>
+    <string name="action_like">Add to Liked Songs</string>
+    <string name="action_unlike">Remove from Liked Songs</string>
+    <string name="action_shuffle">Shuffle</string>
+    <string name="action_library">Library</string>
+    <string name="album_art">Album art</string>
+
+    <!-- Home -->
+    <string name="home_login_prompt">Log in to Spotify to use Karoo Tunes.</string>
+    <string name="home_login_next_step">Then add the Karoo Tunes player data field to one of your ride pages. A full page works best.</string>
+    <string name="home_login">Log in with Spotify</string>
+    <string name="home_logged_in">Logged in to Spotify.</string>
+    <string name="home_logout">Log out</string>
+    <string name="home_preview">Preview player</string>
+    <string name="home_library">Browse library</string>
+    <string name="setting_thumbnails_companion">Album art via phone data</string>
+    <string name="setting_thumbnails_mobile">Album art via mobile data</string>
+    <string name="setting_high_res">High-res album art</string>
+    <string name="setting_only_active_page">Refresh only when on screen</string>
+    <string name="home_not_on_karoo">Could not reach the Karoo system. This app is meant to run on a Karoo bike computer.</string>
+    <string name="welcome_title">Welcome to Karoo Tunes</string>
+    <string name="welcome_body">Karoo Tunes controls Spotify on your phone through the Spotify Web API, so it needs an internet connection via the companion app while you ride.</string>
+    <string name="ok">OK</string>
+    <string name="back">Back</string>
+    <string name="login_in_progress">Logging in…</string>
+    <string name="login_failed">Could not log in to Spotify: %1$s</string>
+    <string name="layout_compact">Small</string>
+    <string name="layout_medium">Medium</string>
+    <string name="layout_full_page">Full</string>
+    <string name="settings">Settings</string>
+
+    <!-- Library -->
+    <string name="tab_playlists">Playlists</string>
+    <string name="tab_podcasts">Podcasts</string>
+    <string name="queue">Queue</string>
+    <string name="saved_songs">Liked Songs</string>
+    <string name="saved_episodes">Your Episodes</string>
+    <string name="saved_songs_subtitle">Your saved songs</string>
+    <string name="queue_subtitle">Coming up next</string>
+    <string name="saved_episodes_subtitle">Episodes you saved</string>
+    <string name="playlist">Playlist</string>
+    <string name="show">Show</string>
+    <string name="spotify_logo">Spotify</string>
+    <string name="add_to_queue">Add to queue</string>
+    <string name="add_to_liked">Add to Liked Songs</string>
+    <string name="added_to_queue">Added to queue</string>
+    <string name="added_to_liked">Added to Liked Songs</string>
+    <string name="remove_from_liked">Remove from Liked Songs</string>
+    <string name="removed_from_liked">Removed from Liked Songs</string>
+    <string name="list_error">Could not load this list: %1$s</string>
+    <string name="playlist_items_unavailable">Spotify only lists the tracks of playlists you own or collaborate on. You can still play the whole playlist.</string>
+    <string name="retry">Retry</string>
+    <string name="empty_list">Nothing here yet.</string>
+    <string name="action_failed">Spotify: %1$s</string>
+    <plurals name="playlist_subtitle">
+        <item quantity="one">Playlist • %1$d song</item>
+        <item quantity="other">Playlist • %1$d songs</item>
+    </plurals>
+    <plurals name="show_subtitle">
+        <item quantity="one">Show • %1$d episode</item>
+        <item quantity="other">Show • %1$d episodes</item>
+    </plurals>
 </resources>

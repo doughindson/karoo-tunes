@@ -1,0 +1,84 @@
+package com.doughindson.karootunes.widget
+
+import com.doughindson.karootunes.R
+import com.doughindson.karootunes.playback.Connection
+import com.doughindson.karootunes.playback.MediaType
+import com.doughindson.karootunes.playback.PlayerCommand
+import com.doughindson.karootunes.playback.PlayerError
+import com.doughindson.karootunes.playback.PlayerState
+import com.doughindson.karootunes.playback.Track
+import com.doughindson.karootunes.playback.WidgetUiState
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class WidgetModelTest {
+    private val track = Track("spotify:track:1", "Song", "Band", 100_000, MediaType.TRACK, smallImageUrl = "s", mediumImageUrl = "m")
+    private val playing = PlayerState(connection = Connection.ACTIVE, track = track, isPlaying = true, positionMs = 50_000)
+
+    private fun model(state: PlayerState, layout: PlayerLayout = PlayerLayout.FULL_PAGE, ui: WidgetUiState = WidgetUiState(), highRes: Boolean = false) =
+        WidgetModel.from(state, ui, layout, highRes)
+
+    @Test
+    fun `layout follows the field's grid size`() {
+        assertEquals(PlayerLayout.COMPACT, PlayerLayout.forField(30 to 60))
+        assertEquals(PlayerLayout.COMPACT, PlayerLayout.forField(60 to 21))
+        assertEquals(PlayerLayout.MEDIUM, PlayerLayout.forField(60 to 39))
+        assertEquals(PlayerLayout.FULL_PAGE, PlayerLayout.forField(60 to 60))
+    }
+
+    @Test
+    fun `track text and artwork`() {
+        val m = model(playing)
+        assertEquals(WidgetText.Literal("Song"), m.title)
+        assertEquals(WidgetText.Literal("Band"), m.subtitle)
+        assertEquals("s", m.artworkUrl)
+        assertEquals("m", model(playing, highRes = true).artworkUrl)
+    }
+
+    @Test
+    fun `layouts without artwork don't load images, and time alone never changes the model`() {
+        val m = model(playing, PlayerLayout.COMPACT)
+        assertNull(m.artworkUrl)
+        // A later position (Spotify keeps playing) is not a visible change: no re-render.
+        assertEquals(model(playing), model(playing.copy(positionMs = 90_000)))
+    }
+
+    @Test
+    fun `skipping without a prefetched track shows a loading title`() {
+        val state = playing.copy(track = null)
+        val m = model(state, ui = WidgetUiState(pending = setOf(PlayerCommand.NEXT)))
+        assertEquals(WidgetText.Resource(R.string.widget_loading_next), m.title)
+        assertTrue(m.titleMuted)
+    }
+
+    @Test
+    fun `errors without a track are shown in full`() {
+        val m = model(PlayerState(error = PlayerError("Offline", "No connection")))
+        assertEquals(WidgetText.Literal("Offline"), m.title)
+        assertEquals(3, m.subtitleMaxLines)
+        assertFalse(m.isEnabled(PlayerCommand.PLAY))
+    }
+
+    @Test
+    fun `buttons stay active while a command is in flight`() {
+        val m = model(playing, ui = WidgetUiState(pending = setOf(PlayerCommand.NEXT)))
+        assertTrue(m.isEnabled(PlayerCommand.NEXT))
+        assertTrue(m.isEnabled(PlayerCommand.PAUSE))
+    }
+
+    @Test
+    fun `podcasts get seek buttons instead of skip`() {
+        val episode = playing.copy(track = track.copy(type = MediaType.EPISODE))
+        assertEquals(
+            listOf(PlayerCommand.SEEK_BACK, PlayerCommand.PAUSE, PlayerCommand.SEEK_FORWARD),
+            transportCommands(model(episode)),
+        )
+        assertEquals(
+            listOf(PlayerCommand.PREVIOUS, PlayerCommand.PAUSE, PlayerCommand.NEXT),
+            transportCommands(model(playing)),
+        )
+    }
+}

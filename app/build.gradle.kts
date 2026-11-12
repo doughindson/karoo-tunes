@@ -1,96 +1,131 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Base64
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.jetbrains.kotlin.android)
-    alias(libs.plugins.compose.compiler)
-    kotlin("plugin.serialization") version "2.0.20"
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
+
+val spotifyClientId: String = System.getenv("SPOTIFY_CLIENT_ID")
+    ?: providers.gradleProperty("SPOTIFY_CLIENT_ID").orNull
+    ?: rootProject.file("local.properties").takeIf { it.isFile }?.let { file ->
+        Properties().apply { file.reader(Charsets.UTF_8).use { load(it) } }.getProperty("SPOTIFY_CLIENT_ID")
+    }
+    ?: throw GradleException(
+        "SPOTIFY_CLIENT_ID is not set. Add it to local.properties, gradle.properties or the environment."
+    )
 
 android {
     namespace = "com.doughindson.karootunes"
-    compileSdk = 35
-    //noinspection GradleDependency
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.doughindson.karootunes"
         minSdk = 26
-        //noinspection ExpiredTargetSdkVersion
+        // The Karoo 3 runs Android 12 (API 31). Targeting a newer API only opts the app into
+        // behaviour changes for newer OS versions it never runs on, so stay at the device level.
+        //noinspection ExpiredTargetSdkVersion,OldTargetApi
         targetSdk = 31
         versionCode = 100 + (System.getenv("BUILD_NUMBER")?.toInt() ?: 1)
         versionName = System.getenv("RELEASE_VERSION") ?: "1.0"
 
-        val env: MutableMap<String, String> = System.getenv()
-        val clientId = env["SPOTIFY_CLIENT_ID"] ?: project.findProperty("SPOTIFY_CLIENT_ID").toString()
-        buildConfigField("String", "SPOTIFY_CLIENT_ID",
-            "\"$clientId\""
-        )
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"$spotifyClientId\"")
+
     }
 
-    signingConfigs {
-        create("release") {
-            val env: MutableMap<String, String> = System.getenv()
-            keyAlias = env["KEY_ALIAS"]
-            keyPassword = env["KEY_PASSWORD"]
-
-            val base64keystore: String = env["KEYSTORE_BASE64"] ?: ""
-            val keystoreFile: File = File.createTempFile("keystore", ".jks")
-            keystoreFile.writeBytes(Base64.getDecoder().decode(base64keystore))
-            storeFile = keystoreFile
-            storePassword = env["KEYSTORE_PASSWORD"]
+    // Only CI has the release keystore. Locally, release builds come out unsigned.
+    val keystoreBase64 = System.getenv("KEYSTORE_BASE64")
+    if (!keystoreBase64.isNullOrBlank()) {
+        signingConfigs {
+            create("release") {
+                val keystoreFile = File.createTempFile("keystore", ".jks").apply { deleteOnExit() }
+                keystoreFile.writeBytes(Base64.getDecoder().decode(keystoreBase64))
+                storeFile = keystoreFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
         }
     }
+
     buildTypes {
-        debug {
-            isMinifyEnabled = false
-        }
         release {
             isMinifyEnabled = true
-            signingConfig = signingConfigs.getByName("release")
+            isShrinkResources = true
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
+
     buildFeatures {
         compose = true
         buildConfig = true
     }
+
+    lint {
+        // karoo-ext brings Timber onto the classpath, but the app logs with android.util.Log.
+        disable += "LogNotTimber"
+        // Themed (monochrome) icons need Android 13; the Karoo runs Android 12.
+        disable += "MonochromeLauncherIcon"
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
+/** Release notes for manifest.json come from the first section of CHANGELOG.md. */
+fun latestReleaseNotes(): String {
+    val changelog = rootProject.file("CHANGELOG.md")
+    if (!changelog.isFile) return ""
+    return changelog.readLines()
+        .dropWhile { !it.startsWith("## ") }
+        .drop(1)
+        .takeWhile { !it.startsWith("## ") }
+        .filter { it.isNotBlank() }
+        .joinToString("\n")
 }
 
 tasks.register("generateManifest") {
     description = "Generates manifest.json with current version information"
     group = "build"
 
+    val versionName = android.defaultConfig.versionName
+    val versionCode = android.defaultConfig.versionCode
+    val releaseNotes = latestReleaseNotes()
+    val manifestFile = file("$projectDir/manifest.json")
+    val releaseUrl = "https://github.com/doughindson/karoo-tunes/releases/latest/download"
+
     doLast {
-        val manifestFile = file("$projectDir/manifest.json")
         val manifest = mapOf(
             "label" to "Karoo Tunes",
             "packageName" to "com.doughindson.karootunes",
-            "iconUrl" to "https://github.com/doughindson/karoo-tunes/releases/latest/download/karoo-tunes.png",
-            "latestApkUrl" to "https://github.com/doughindson/karoo-tunes/releases/latest/download/app-release.apk",
-            "latestVersion" to android.defaultConfig.versionName,
-            "latestVersionCode" to android.defaultConfig.versionCode,
+            "iconUrl" to "$releaseUrl/karoo-tunes.png",
+            "latestApkUrl" to "$releaseUrl/app-release.apk",
+            "latestVersion" to versionName,
+            "latestVersionCode" to versionCode,
             "developer" to "doughindson",
             "description" to "Provides media controls for Spotify. Can be used as a remote control for Spotify running on your phone / computer or offline if you have sideloaded the Spotify app itself on the Karoo. Currently not compatible with Karoo 2.",
-            "releaseNotes" to "* Cached playlists, library items etc no longer expire after one week\n* Reduced refresh interval to 25s in remote control mode if the player is only refreshed when it is on screen",
-            "screenshotUrls" to listOf(
-                "https://github.com/doughindson/karoo-tunes/releases/latest/download/player.png",
-                "https://github.com/doughindson/karoo-tunes/releases/latest/download/playlists.png",
-                "https://github.com/doughindson/karoo-tunes/releases/latest/download/podcast.png",
-                "https://github.com/doughindson/karoo-tunes/releases/latest/download/login.png"
-            ),
+            "releaseNotes" to releaseNotes,
+            "screenshotUrls" to listOf("player.png", "playlists.png", "podcast.png", "login.png").map { "$releaseUrl/$it" },
             "tags" to listOf("entertainment")
         )
 
-        val gson = groovy.json.JsonBuilder(manifest).toPrettyString()
-        manifestFile.writeText(gson)
-        println("Generated manifest.json with version ${android.defaultConfig.versionName} (${android.defaultConfig.versionCode})")
+        manifestFile.writeText(groovy.json.JsonBuilder(manifest).toPrettyString())
+        println("Generated manifest.json with version $versionName ($versionCode)")
     }
 }
 
@@ -99,29 +134,30 @@ tasks.named("assemble") {
 }
 
 dependencies {
-    implementation(files("libs/spotify-app-remote-release-0.8.0.aar"))
-
-    implementation(libs.ktor.client.okhttp)
     implementation(libs.hammerhead.karoo.ext)
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.bundles.androidx.lifeycle)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.bundles.compose.ui)
+    implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.glance.appwidget)
-    implementation(libs.androidx.glance.appwidget.preview)
-    implementation(libs.androidx.glance.preview)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.gson)
-    implementation(libs.androidx.paging.common.android)
-    implementation(libs.androidx.paging.compose)
-    implementation(libs.androidx.navigation.runtime.ktx)
+    implementation(libs.ktor.client.okhttp)
+
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.bundles.lifecycle)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.compose)
+    implementation(libs.androidx.paging.compose)
+    implementation(libs.androidx.datastore.preferences)
 
-    // Jackson databind provides the StdSerializer and StdDeserializer classes.
-    implementation(libs.jackson.databind)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.bundles.compose)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 
+    implementation(libs.bundles.glance)
+
+    implementation(platform(libs.koin.bom))
+    implementation(libs.bundles.koin)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.paging.common)
+    testImplementation(platform(libs.koin.bom))
+    testImplementation(libs.koin.test)
 }
