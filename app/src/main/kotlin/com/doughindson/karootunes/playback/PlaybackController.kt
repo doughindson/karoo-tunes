@@ -19,7 +19,6 @@ interface PlaybackController {
     suspend fun previous(): ApiResult<Unit>
     suspend fun seekTo(positionMs: Int): ApiResult<Unit>
     suspend fun setShuffle(enabled: Boolean): ApiResult<Unit>
-    suspend fun setRepeat(mode: RepeatMode): ApiResult<Unit>
     suspend fun setLiked(uris: List<String>, liked: Boolean): ApiResult<Unit>
 
     /** Plays a playlist/show/album, optionally starting at one of its items. */

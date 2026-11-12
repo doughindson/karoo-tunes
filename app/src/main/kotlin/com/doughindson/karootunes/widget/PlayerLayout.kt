@@ -3,13 +3,13 @@ package com.doughindson.karootunes.widget
 /**
  * The widget's three layouts. Karoo Tunes works alongside the Karoo's own media controls, which
  * handle play/pause/skip instantly, so only the full page repeats those; the smaller layouts focus
- * on what only Spotify can do (like, shuffle, repeat, library).
+ * on what only Spotify can do (like, shuffle, library).
  */
 enum class PlayerLayout(val showsArtwork: Boolean) {
-    /** Like / shuffle / repeat / library in one row. */
+    /** Like / shuffle / library in one row. */
     COMPACT(showsArtwork = false),
 
-    /** Album art with the four buttons beside it, track and artist underneath. */
+    /** Album art with the three buttons beside it, track and artist underneath. */
     MEDIUM(showsArtwork = true),
 
     /** Medium plus play/pause and skip (or podcast seek) buttons. */

@@ -8,7 +8,6 @@ import com.doughindson.karootunes.data.spotify.model.PlaylistItem
 import com.doughindson.karootunes.data.spotify.model.SavedTrack
 import com.doughindson.karootunes.playback.MediaType
 import com.doughindson.karootunes.playback.PlayerCommand
-import com.doughindson.karootunes.playback.RepeatMode
 import com.doughindson.karootunes.playback.toSnapshot
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -45,7 +44,7 @@ class ModelDecodingTest {
     @Test
     fun `episode playback state maps to a podcast snapshot`() {
         val json = """
-            {"is_playing":true,"progress_ms":1000,"shuffle_state":false,"repeat_state":"track",
+            {"is_playing":true,"progress_ms":1000,"shuffle_state":false,
              "currently_playing_type":"episode",
              "item":{"type":"episode","uri":"spotify:episode:1","name":"Ep 1","duration_ms":60000,
                      "images":[{"url":"big"},{"url":"medium"},{"url":"small"}],"show":{"name":"The Show"}},
@@ -57,7 +56,6 @@ class ModelDecodingTest {
         assertEquals("The Show", snapshot.track?.subtitle)
         assertEquals("small", snapshot.track?.smallImageUrl)
         assertEquals("medium", snapshot.track?.mediumImageUrl)
-        assertEquals(RepeatMode.TRACK, snapshot.repeat)
         assertEquals(setOf(PlayerCommand.PREVIOUS, PlayerCommand.SEEK_BACK, PlayerCommand.SEEK_FORWARD), snapshot.disallowed)
         assertTrue(snapshot.isPlaying)
     }

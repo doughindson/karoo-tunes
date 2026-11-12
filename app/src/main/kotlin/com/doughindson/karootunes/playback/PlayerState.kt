@@ -2,20 +2,6 @@ package com.doughindson.karootunes.playback
 
 enum class MediaType { TRACK, EPISODE, AD, UNKNOWN }
 
-enum class RepeatMode(val apiValue: String) {
-    OFF("off"), CONTEXT("context"), TRACK("track");
-
-    fun next(): RepeatMode = when (this) {
-        OFF -> CONTEXT
-        CONTEXT -> TRACK
-        TRACK -> OFF
-    }
-
-    companion object {
-        fun fromApi(value: String?): RepeatMode = entries.firstOrNull { it.apiValue == value } ?: OFF
-    }
-}
-
 /** Everything the player shows about one track or episode. Image URLs are ordered largest first. */
 data class Track(
     val uri: String?,
@@ -32,7 +18,7 @@ data class Track(
 
 /** Commands a user can issue from the widget. */
 enum class PlayerCommand {
-    PLAY, PAUSE, NEXT, PREVIOUS, SEEK_BACK, SEEK_FORWARD, TOGGLE_SHUFFLE, CYCLE_REPEAT, TOGGLE_LIKE
+    PLAY, PAUSE, NEXT, PREVIOUS, SEEK_BACK, SEEK_FORWARD, TOGGLE_SHUFFLE, TOGGLE_LIKE
 }
 
 /**
@@ -47,7 +33,6 @@ data class PlaybackSnapshot(
     val isPlaying: Boolean,
     val positionMs: Int,
     val shuffle: Boolean,
-    val repeat: RepeatMode,
     val disallowed: Set<PlayerCommand>,
     val deviceId: String? = null,
     val deviceName: String? = null,
@@ -76,7 +61,6 @@ data class PlayerState(
     /** Clock time (see [PlayerRepository]'s clock) at which [positionMs] was measured. */
     val positionUpdatedAt: Long = 0,
     val shuffle: Boolean = false,
-    val repeat: RepeatMode = RepeatMode.OFF,
     /** Null while unknown (just changed track, or lookup failed). */
     val isLiked: Boolean? = null,
     val disallowed: Set<PlayerCommand> = emptySet(),

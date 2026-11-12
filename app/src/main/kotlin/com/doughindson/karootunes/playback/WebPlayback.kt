@@ -23,7 +23,6 @@ class WebPlayback(private val api: SpotifyWebApi) : PlaybackController {
     override suspend fun previous() = api.previous()
     override suspend fun seekTo(positionMs: Int) = api.seek(positionMs)
     override suspend fun setShuffle(enabled: Boolean) = api.setShuffle(enabled)
-    override suspend fun setRepeat(mode: RepeatMode) = api.setRepeat(mode.apiValue)
     override suspend fun setLiked(uris: List<String>, liked: Boolean) = api.setSaved(uris, liked)
 
     override suspend fun playContext(contextUri: String, startAtUri: String?) =
@@ -45,14 +44,12 @@ internal fun PlaybackStateResponse.toSnapshot(): PlaybackSnapshot {
             add(PlayerCommand.SEEK_FORWARD)
         }
         if (disallows?.togglingShuffle == true) add(PlayerCommand.TOGGLE_SHUFFLE)
-        if (disallows?.togglingRepeatContext == true && disallows.togglingRepeatTrack == true) add(PlayerCommand.CYCLE_REPEAT)
     }
     return PlaybackSnapshot(
         track = item?.toTrack(currentlyPlayingType),
         isPlaying = isPlaying == true,
         positionMs = progressMs ?: 0,
         shuffle = shuffleState == true,
-        repeat = RepeatMode.fromApi(repeatState),
         disallowed = disallowed,
         deviceId = device?.id,
         deviceName = device?.name,

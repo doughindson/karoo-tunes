@@ -97,8 +97,15 @@ class PlayerRepository(
         commandsInFlight.first { it == 0 }
     }
 
+    /** How often to refresh: quickly while the player is on screen, slowly while it's only in the profile. */
+    private enum class PollMode(val intervalMs: Long) {
+        OFF(0),
+        ON_SCREEN(10_000L),
+        IN_PROFILE(45_000L),
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun shouldPoll(): Flow<Boolean> = combine(
+    private fun pollMode(): Flow<PollMode> = combine(
         auth.isLoggedIn,
         karoo.connected,
         visibility.previews,
@@ -107,24 +114,34 @@ class PlayerRepository(
         PollInputs(loggedIn, karooConnected, previews > 0, onlyOnActivePage)
     }.distinctUntilChanged().flatMapLatest { inputs ->
         when {
-            !inputs.loggedIn -> flowOf(false)
+            !inputs.loggedIn -> flowOf(PollMode.OFF)
             // Not on a Karoo (emulator / phone): nothing to tell us whether the field is visible.
-            !inputs.karooConnected || inputs.previewOpen -> flowOf(true)
+            !inputs.karooConnected || inputs.previewOpen -> flowOf(PollMode.ON_SCREEN)
             inputs.onlyOnActivePage -> karoo.isDataTypeOnScreen(PlayerDataType.DATA_TYPE_ID)
-            else -> karoo.isDataTypeInActiveProfile(PlayerDataType.DATA_TYPE_ID)
+                .map { onScreen -> if (onScreen) PollMode.ON_SCREEN else PollMode.OFF }
+            else -> combine(
+                karoo.isDataTypeOnScreen(PlayerDataType.DATA_TYPE_ID),
+                karoo.isDataTypeInActiveProfile(PlayerDataType.DATA_TYPE_ID),
+            ) { onScreen, inProfile ->
+                when {
+                    onScreen -> PollMode.ON_SCREEN
+                    inProfile -> PollMode.IN_PROFILE
+                    else -> PollMode.OFF
+                }
+            }
         }
     }.distinctUntilChanged()
 
     private data class PollInputs(val loggedIn: Boolean, val karooConnected: Boolean, val previewOpen: Boolean, val onlyOnActivePage: Boolean)
 
     private suspend fun pollWhileVisible() {
-        shouldPoll().collectLatest { active ->
-            Log.d(TAG, "Player polling active: $active")
-            if (!active) return@collectLatest
+        pollMode().collectLatest { mode ->
+            Log.d(TAG, "Player polling: $mode")
+            if (mode == PollMode.OFF) return@collectLatest
             while (true) {
                 awaitNoCommands()
                 poll()
-                val requested = withTimeoutOrNull(nextPollDelayMs()) { refreshRequests.receive() } != null
+                val requested = withTimeoutOrNull(nextPollDelayMs(mode)) { refreshRequests.receive() } != null
                 // After a command, wait until presses stop before refreshing. The Karoo sends one request
                 // at a time, so a refresh in between would hold up the next press by seconds.
                 if (requested) {
@@ -134,11 +151,11 @@ class PlayerRepository(
         }
     }
 
-    private suspend fun nextPollDelayMs(): Long {
+    private fun nextPollDelayMs(mode: PollMode): Long {
         val current = _state.value
+        val interval = mode.intervalMs
         // The rider is probably about to start Spotify on the phone; notice it quickly.
-        if (current.connection == Connection.NO_PLAYER) return NO_PLAYER_INTERVAL_MS
-        val interval = if (settings.current().onlyRefreshOnActivePage) ACTIVE_PAGE_INTERVAL_MS else PROFILE_INTERVAL_MS
+        if (current.connection == Connection.NO_PLAYER) return minOf(interval, NO_PLAYER_INTERVAL_MS)
         val duration = current.track?.durationMs
         if (!current.isPlaying || duration == null) return interval
         // Refresh just after the current track ends so the next one shows up promptly.
@@ -202,8 +219,6 @@ class PlayerRepository(
     }
 
     private companion object {
-        const val ACTIVE_PAGE_INTERVAL_MS = 25_000L
-        const val PROFILE_INTERVAL_MS = 45_000L
         const val MIN_POLL_INTERVAL_MS = 3_000L
         const val TRACK_END_GRACE_MS = 2_000L
         const val COMMAND_SETTLE_MS = 2_500L

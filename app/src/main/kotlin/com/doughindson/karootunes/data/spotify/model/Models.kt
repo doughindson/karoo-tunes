@@ -118,8 +118,6 @@ data class Disallows(
     val seeking: Boolean? = null,
     @SerialName("skipping_next") val skippingNext: Boolean? = null,
     @SerialName("skipping_prev") val skippingPrev: Boolean? = null,
-    @SerialName("toggling_repeat_context") val togglingRepeatContext: Boolean? = null,
-    @SerialName("toggling_repeat_track") val togglingRepeatTrack: Boolean? = null,
     @SerialName("toggling_shuffle") val togglingShuffle: Boolean? = null,
 )
 
@@ -129,7 +127,6 @@ data class Actions(val disallows: Disallows? = null)
 @Serializable
 data class PlaybackStateResponse(
     val device: Device? = null,
-    @SerialName("repeat_state") val repeatState: String? = null,
     @SerialName("shuffle_state") val shuffleState: Boolean? = null,
     val timestamp: Long? = null,
     @SerialName("progress_ms") val progressMs: Int? = null,

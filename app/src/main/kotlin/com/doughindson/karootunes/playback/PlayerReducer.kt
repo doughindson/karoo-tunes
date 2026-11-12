@@ -27,7 +27,6 @@ object PlayerReducer {
             positionMs = snapshot.positionMs,
             positionUpdatedAt = now,
             shuffle = snapshot.shuffle,
-            repeat = snapshot.repeat,
             disallowed = snapshot.disallowed,
             lastDeviceId = snapshot.deviceId ?: state.lastDeviceId,
             lastDeviceName = snapshot.deviceName ?: state.lastDeviceName,
@@ -116,7 +115,6 @@ object PlayerReducer {
                 state.copy(positionMs = state.track?.durationMs?.let { target.coerceAtMost(it) } ?: target, positionUpdatedAt = now)
             }
             PlayerCommand.TOGGLE_SHUFFLE -> state.copy(shuffle = !state.shuffle)
-            PlayerCommand.CYCLE_REPEAT -> state.copy(repeat = state.repeat.next())
             PlayerCommand.TOGGLE_LIKE -> state.copy(isLiked = state.isLiked != true)
         }
     }

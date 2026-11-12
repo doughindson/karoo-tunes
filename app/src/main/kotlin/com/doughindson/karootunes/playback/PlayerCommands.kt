@@ -37,7 +37,6 @@ class PlayerCommands(
                 PlayerCommand.PREVIOUS -> if (restartsTrack) controller.seekTo(0) else controller.previous()
                 PlayerCommand.SEEK_BACK, PlayerCommand.SEEK_FORWARD -> controller.seekTo(after.positionMs)
                 PlayerCommand.TOGGLE_SHUFFLE -> controller.setShuffle(after.shuffle)
-                PlayerCommand.CYCLE_REPEAT -> controller.setRepeat(after.repeat)
                 PlayerCommand.TOGGLE_LIKE -> toggleLikeOnPlayingTrack(before, after, now)
             }
             if (result is ApiResult.Ok && (command == PlayerCommand.PLAY || command == PlayerCommand.PAUSE)) {
@@ -141,7 +140,6 @@ class PlayerCommands(
         PlayerCommand.NEXT, PlayerCommand.PREVIOUS -> "Change track"
         PlayerCommand.SEEK_BACK, PlayerCommand.SEEK_FORWARD -> "Seek"
         PlayerCommand.TOGGLE_SHUFFLE -> "Shuffle"
-        PlayerCommand.CYCLE_REPEAT -> "Repeat"
         PlayerCommand.TOGGLE_LIKE -> "Liked Songs"
     }
 }

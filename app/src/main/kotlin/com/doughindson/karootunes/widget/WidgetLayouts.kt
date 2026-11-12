@@ -49,10 +49,11 @@ fun PlayerWidget(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
  */
 @Composable
 private fun FullPageLayout(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
-    // rowWidth = art + gap + button, art = 4·button + 3·gap (so the art is as tall as the column),
-    // gap = 0.15·button  ⇒  rowWidth = 5.6·button. Floor so rounding never overflows the row.
+    // rowWidth = art + gap + button, art = n·button + (n-1)·gap (so the art is as tall as the column
+    // of n buttons), gap = 0.15·button  ⇒  rowWidth = (n + 1 + 0.15·n)·button. Floor so rounding
+    // never overflows the row.
     val rowWidth = (size.width - OUTER_PADDING * 2).value
-    val button = floor(rowWidth / 5.6f).dp
+    val button = floor(rowWidth / (OPTION_COUNT + 1 + 0.15f * OPTION_COUNT)).dp
     val gap = floor(button.value * 0.15f).dp
     val artSize = button * OPTION_COUNT + gap * (OPTION_COUNT - 1)
 
@@ -72,7 +73,7 @@ private fun FullPageLayout(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
 }
 
 /**
- * Album art with the four option buttons beside it and the track underneath. The art takes the
+ * Album art with the option buttons beside it and the track underneath. The art takes the
  * height that's left after the text; the buttons share the remaining width.
  */
 @Composable
@@ -90,7 +91,7 @@ private fun MediumLayout(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
     }
 }
 
-/** Just the four Spotify buttons, filling the field. */
+/** Just the Spotify buttons, filling the field. */
 @Composable
 private fun CompactLayout(model: WidgetModel, size: DpSize) {
     val width = size.width - OUTER_PADDING * 2
@@ -102,7 +103,7 @@ private fun CompactLayout(model: WidgetModel, size: DpSize) {
     }
 }
 
-/** Square [artSize] artwork, then a column of the four option buttons, each [buttonWidth] wide. */
+/** Square [artSize] artwork, then a column of the option buttons, each [buttonWidth] wide. */
 @Composable
 private fun ArtworkWithOptions(model: WidgetModel, artwork: Bitmap?, artSize: Dp, buttonWidth: Dp, gap: Dp) {
     val buttonHeight = floor((artSize - gap * (OPTION_COUNT - 1)).value / OPTION_COUNT).dp

@@ -22,7 +22,7 @@ class PlayerReducerTest {
     )
 
     private fun snapshot(track: Track?, playing: Boolean = true, position: Int = 0) =
-        PlaybackSnapshot(track, playing, position, shuffle = false, repeat = RepeatMode.OFF, disallowed = emptySet())
+        PlaybackSnapshot(track, playing, position, shuffle = false, disallowed = emptySet())
 
     @Test
     fun `position advances while playing and stops at the end of the track`() {
@@ -63,13 +63,6 @@ class PlayerReducerTest {
         assertEquals(0, PlayerReducer.optimistic(playing, PlayerCommand.SEEK_BACK, 0).positionMs)
         val nearEnd = playing.copy(positionMs = 190_000)
         assertEquals(200_000, PlayerReducer.optimistic(nearEnd, PlayerCommand.SEEK_FORWARD, 0).positionMs)
-    }
-
-    @Test
-    fun `repeat cycles off, context, track`() {
-        var state = playing
-        val seen = List(3) { state = PlayerReducer.optimistic(state, PlayerCommand.CYCLE_REPEAT, 0); state.repeat }
-        assertEquals(listOf(RepeatMode.CONTEXT, RepeatMode.TRACK, RepeatMode.OFF), seen)
     }
 
     @Test

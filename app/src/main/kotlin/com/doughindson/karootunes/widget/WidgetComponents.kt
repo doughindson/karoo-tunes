@@ -34,7 +34,6 @@ import androidx.glance.text.TextStyle
 import androidx.glance.color.ColorProvider
 import com.doughindson.karootunes.R
 import com.doughindson.karootunes.playback.PlayerCommand
-import com.doughindson.karootunes.playback.RepeatMode
 import com.doughindson.karootunes.ui.MainActivity
 
 /** Day/night pairs; keep in sync with res/values(-night)/colors.xml, which the button shapes use. */
@@ -105,13 +104,11 @@ internal fun CommandButton(model: WidgetModel, command: PlayerCommand, modifier:
         PlayerCommand.SEEK_BACK -> R.drawable.ic_fast_rewind to R.string.action_seek_back
         PlayerCommand.SEEK_FORWARD -> R.drawable.ic_fast_forward to R.string.action_seek_forward
         PlayerCommand.TOGGLE_SHUFFLE -> R.drawable.ic_shuffle to R.string.action_shuffle
-        PlayerCommand.CYCLE_REPEAT -> (if (model.repeat == RepeatMode.TRACK) R.drawable.ic_repeat_one else R.drawable.ic_repeat) to R.string.action_repeat
         PlayerCommand.TOGGLE_LIKE -> (if (model.liked) R.drawable.ic_favorite else R.drawable.ic_favorite_border) to
             (if (model.liked) R.string.action_unlike else R.string.action_like)
     }
     val active = when (command) {
         PlayerCommand.TOGGLE_SHUFFLE -> model.shuffle
-        PlayerCommand.CYCLE_REPEAT -> model.repeat != RepeatMode.OFF
         PlayerCommand.TOGGLE_LIKE -> model.liked
         else -> false
     }
@@ -139,18 +136,17 @@ internal fun transportCommands(model: WidgetModel): List<PlayerCommand> = listOf
     if (model.isEpisode) PlayerCommand.SEEK_FORWARD else PlayerCommand.NEXT,
 )
 
-/** Like / Shuffle / Repeat / Library: what only Karoo Tunes can do (the Karoo has its own play/pause/skip). */
+/** Like / Shuffle / Library: what only Karoo Tunes can do (the Karoo has its own play/pause/skip). */
 @Composable
 internal fun OptionButton(model: WidgetModel, index: Int, modifier: GlanceModifier, iconSize: Dp) {
     when (index) {
         0 -> CommandButton(model, PlayerCommand.TOGGLE_LIKE, modifier, iconSize)
         1 -> CommandButton(model, PlayerCommand.TOGGLE_SHUFFLE, modifier, iconSize)
-        2 -> CommandButton(model, PlayerCommand.CYCLE_REPEAT, modifier, iconSize)
         else -> LibraryButton(modifier, iconSize)
     }
 }
 
-internal const val OPTION_COUNT = 4
+internal const val OPTION_COUNT = 3
 
 /** Lays out [count] equal-width buttons with gaps, absorbing rounding in the last one so nothing clips. */
 @Composable

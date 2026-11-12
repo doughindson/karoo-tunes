@@ -7,11 +7,13 @@ The first `## ` section below is published as the release notes in `manifest.jso
 * You no longer get logged out after a short loss of connection during a ride, and the player keeps showing the last track while offline
 * Liked Songs, playlists and podcast lists now load past their first page
 * Playlist track lists use Spotify's current API (only playlists you own or collaborate on can be listed; any can be played)
-* New layouts designed to sit alongside the Karoo's own media controls: compact fields show like, shuffle, repeat and library; medium fields add album art and the current track; the full page adds play/pause and skip
+* New layouts designed to sit alongside the Karoo's own media controls: compact fields show like, shuffle and library; medium fields add album art and the current track; the full page adds play/pause and skip
 * Podcasts: skip back 15 s / forward 30 s buttons on the full page while an episode plays
 * Liking a song likes the one actually playing, even right after skipping with the Karoo's controls
 * The library now includes the play queue
 * Removed the progress bar, which kept the Karoo busy redrawing
+* The player refreshes every 10 s while on screen (was 25 s), so skips made with the Karoo's controls show up sooner
+* Removed the repeat button
 * The player follows the Karoo's day and night themes
 * Faster, smoother player: it only redraws when something visible changes
 * Logging in survives the app being closed while the browser is open

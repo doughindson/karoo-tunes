@@ -7,7 +7,6 @@ import com.doughindson.karootunes.playback.MediaType
 import com.doughindson.karootunes.playback.PlayerCommand
 import com.doughindson.karootunes.playback.PlayerReducer
 import com.doughindson.karootunes.playback.PlayerState
-import com.doughindson.karootunes.playback.RepeatMode
 import com.doughindson.karootunes.playback.WidgetUiState
 
 sealed interface WidgetText {
@@ -29,7 +28,6 @@ data class WidgetModel(
     val isEpisode: Boolean,
     val liked: Boolean,
     val shuffle: Boolean,
-    val repeat: RepeatMode,
     val enabled: Set<PlayerCommand>,
     val artworkUrl: String?,
 ) {
@@ -97,7 +95,6 @@ data class WidgetModel(
                 isEpisode = track?.type == MediaType.EPISODE,
                 liked = state.isLiked == true,
                 shuffle = state.shuffle,
-                repeat = state.repeat,
                 enabled = enabled,
                 artworkUrl = if (layout.showsArtwork) track?.imageUrl(highResArtwork) else null,
             )

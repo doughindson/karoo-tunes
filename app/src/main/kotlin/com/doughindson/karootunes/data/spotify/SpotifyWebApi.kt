@@ -54,7 +54,6 @@ class SpotifyWebApi(
     suspend fun previous() = command("POST", "/me/player/previous")
     suspend fun seek(positionMs: Int) = command("PUT", "/me/player/seek?position_ms=${positionMs.coerceAtLeast(0)}")
     suspend fun setShuffle(enabled: Boolean) = command("PUT", "/me/player/shuffle?state=$enabled")
-    suspend fun setRepeat(state: String) = command("PUT", "/me/player/repeat?state=$state")
     suspend fun addToQueue(uri: String) = command("POST", "/me/player/queue?uri=${encode(uri)}")
 
     // --- Library (the 2026 unified endpoints take full spotify: URIs) -------------------------

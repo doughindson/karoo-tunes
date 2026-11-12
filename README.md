@@ -16,8 +16,8 @@ Compatible with Karoo 3 devices.
 ## Features
 
 - Works alongside the Karoo's own media controls, which handle play/pause and skip instantly, and adds what only Spotify can do:
-  - **Compact field:** like, shuffle, repeat, and open the library
-  - **Medium field:** album art with those four buttons, plus the current track and artist
+  - **Compact field:** like, shuffle, and open the library
+  - **Medium field:** album art with those three buttons, plus the current track and artist
   - **Full page:** all of the above plus play/pause and skip (podcasts get back 15 s / forward 30 s instead)
 - Album art, and a library of playlists, Liked Songs, podcasts, saved episodes and the play queue
 - Follows the Karoo's day and night themes
@@ -31,7 +31,7 @@ If you are using a Karoo 3, you can use [Hammerhead's sideloading procedure](htt
 3. Open Karoo Tunes from the main menu, acknowledge the note and log in to Spotify.
 4. Add the Karoo Tunes player data field to one of your ride pages. A full page works best.
 
-Karoo Tunes controls Spotify on your phone (or any other Spotify Connect device, such as a computer when training indoors) through the Spotify Web API. It needs an internet connection, which the companion app provides while your phone has mobile data. The player refreshes every 25 seconds while it is on screen, and right after the current track ends. You can make it refresh whenever it is part of the active ride profile instead, which makes it quicker to show the current track when you switch to its page but uses more battery.
+Karoo Tunes controls Spotify on your phone (or any other Spotify Connect device, such as a computer when training indoors) through the Spotify Web API. It needs an internet connection, which the companion app provides while your phone has mobile data. The player refreshes every 10 seconds while it is on screen, and right after the current track ends. You can also have it refresh every 45 seconds while it is in the active ride profile but on another page, so the current track is already showing when you switch to it; this uses more battery.
 
 Spotify's Development Mode rules apply: the app owner needs Spotify Premium, and track lists are only available for playlists you own or collaborate on (any playlist can still be played as a whole).
 
