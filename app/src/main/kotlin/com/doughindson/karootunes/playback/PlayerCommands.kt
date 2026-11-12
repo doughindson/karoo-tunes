@@ -3,6 +3,7 @@ package com.doughindson.karootunes.playback
 import android.util.Log
 import com.doughindson.karootunes.TAG
 import com.doughindson.karootunes.data.karoo.KarooGateway
+import com.doughindson.karootunes.data.spotify.ApiError
 import com.doughindson.karootunes.data.spotify.ApiResult
 
 /**
@@ -31,7 +32,7 @@ class PlayerCommands(
         try {
             val after = repository.updateAndGet { PlayerReducer.optimistic(it, command, now) }
             val result = when (command) {
-                PlayerCommand.PLAY -> controller.play()
+                PlayerCommand.PLAY -> controller.play(deviceId = if (before.hasPlayer) null else before.lastDeviceId)
                 PlayerCommand.PAUSE -> controller.pause()
                 PlayerCommand.NEXT -> controller.next()
                 PlayerCommand.PREVIOUS -> if (restartsTrack) controller.seekTo(0) else controller.previous()
@@ -47,7 +48,7 @@ class PlayerCommands(
                 if (command == PlayerCommand.TOGGLE_LIKE) {
                     repository.updateAndGet { if (it.track?.uri == before.track?.uri) it.copy(isLiked = before.isLiked) else it }
                 }
-                karoo.showAlert(command.alertTitle(), result.error.message)
+                alertFor(command, result.error)?.let { (title, message) -> karoo.showAlert(title, message) }
             }
         } finally {
             repository.endCommand()
@@ -72,6 +73,26 @@ class PlayerCommands(
     }
 
     suspend fun setLiked(uris: List<String>, liked: Boolean) = controller.setLiked(uris, liked).also { repository.requestRefresh() }
+
+    /**
+     * What to tell the rider about a failed command, or null when it isn't worth an alert. Spotify
+     * answers 403 "Restriction violated" when play/pause doesn't match its real state (e.g. pausing
+     * music that already stopped); the refresh that follows every command shows the real state.
+     */
+    private fun alertFor(command: PlayerCommand, error: ApiError): Pair<String, String>? {
+        if (error is ApiError.Http) {
+            val stateMismatch = error.status == 403 && error.reason != "PREMIUM_REQUIRED" &&
+                (command == PlayerCommand.PLAY || command == PlayerCommand.PAUSE)
+            if (stateMismatch) return null
+            if (error.status == 404 || error.reason == "NO_ACTIVE_DEVICE") {
+                return command.alertTitle() to "Spotify isn't running on your phone. Open Spotify there and start playing."
+            }
+            if (error.reason == "PREMIUM_REQUIRED") {
+                return command.alertTitle() to "Controlling playback needs Spotify Premium."
+            }
+        }
+        return command.alertTitle() to error.message
+    }
 
     private fun PlayerCommand.alertTitle() = when (this) {
         PlayerCommand.PLAY -> "Play"

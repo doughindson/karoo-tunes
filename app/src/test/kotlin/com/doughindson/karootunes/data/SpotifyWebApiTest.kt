@@ -98,4 +98,13 @@ class SpotifyWebApiTest {
         assertEquals(ApiResult.Ok(true), api.isSaved("spotify:track:1"))
         assertTrue(transport.requests.single().url.endsWith("/me/library/contains?uris=spotify%3Atrack%3A1"))
     }
+
+    @Test
+    fun `play can target a device, and Spotify's error reason is kept`() = runTest {
+        transport.respond(404, """{"error":{"status":404,"message":"Player command failed: No active device found","reason":"NO_ACTIVE_DEVICE"}}""")
+
+        val error = (api.play(deviceId = "abc 1") as ApiResult.Failure).error as ApiError.Http
+        assertTrue(transport.requests.single().url.endsWith("/me/player/play?device_id=abc+1"))
+        assertEquals("NO_ACTIVE_DEVICE", error.reason)
+    }
 }

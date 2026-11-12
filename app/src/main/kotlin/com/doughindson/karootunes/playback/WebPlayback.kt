@@ -19,7 +19,7 @@ class WebPlayback(private val api: SpotifyWebApi) : PlaybackController {
 
     override suspend fun isLiked(uri: String) = api.isSaved(uri)
 
-    override suspend fun play() = api.play()
+    override suspend fun play(deviceId: String?) = api.play(deviceId = deviceId)
     override suspend fun pause() = api.pause()
     override suspend fun next() = api.next()
     override suspend fun previous() = api.previous()
@@ -56,6 +56,8 @@ internal fun PlaybackStateResponse.toSnapshot(): PlaybackSnapshot {
         shuffle = shuffleState == true,
         repeat = RepeatMode.fromApi(repeatState),
         disallowed = disallowed,
+        deviceId = device?.id,
+        deviceName = device?.name,
     )
 }
 

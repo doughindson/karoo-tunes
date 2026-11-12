@@ -43,13 +43,18 @@ data class PlaybackSnapshot(
     val shuffle: Boolean,
     val repeat: RepeatMode,
     val disallowed: Set<PlayerCommand>,
+    val deviceId: String? = null,
+    val deviceName: String? = null,
 )
 
 enum class Connection {
     /** Nothing fetched yet. */
     UNKNOWN,
     ACTIVE,
-    /** Logged in, but Spotify isn't playing on any device. */
+    /**
+     * Logged in, but Spotify has no active device. This happens when Spotify on the phone has been
+     * paused for a while. Play can still resume on [PlayerState.lastDeviceId].
+     */
     NO_PLAYER,
     NOT_LOGGED_IN,
 }
@@ -74,8 +79,14 @@ data class PlayerState(
     /** Shown instantly on Next while the real skip is in flight. */
     val upcoming: List<Track> = emptyList(),
     val error: PlayerError? = null,
+    /** The device Spotify last played on, so Play can resume there after Spotify goes idle. */
+    val lastDeviceId: String? = null,
+    val lastDeviceName: String? = null,
 ) {
     val hasPlayer: Boolean get() = connection == Connection.ACTIVE
+
+    /** Spotify went idle, but we know where to resume. */
+    val canResumeIdle: Boolean get() = connection == Connection.NO_PLAYER && lastDeviceId != null
 
     /** Playback position extrapolated to [now] while playing. */
     fun positionAt(now: Long): Int {

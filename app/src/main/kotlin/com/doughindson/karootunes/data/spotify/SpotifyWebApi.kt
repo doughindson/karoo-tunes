@@ -41,8 +41,13 @@ class SpotifyWebApi(
 
     suspend fun queue(): ApiResult<QueueResponse> = get("/me/player/queue", QueueResponse.serializer())
 
-    suspend fun play(request: PlayRequest? = null): ApiResult<Unit> =
-        command("PUT", "/me/player/play", request?.let { AppJson.encodeToString(PlayRequest.serializer(), it) })
+    /** With [deviceId], playback (re)starts on that device even if Spotify no longer considers it active. */
+    suspend fun play(request: PlayRequest? = null, deviceId: String? = null): ApiResult<Unit> =
+        command(
+            "PUT",
+            "/me/player/play" + (deviceId?.let { "?device_id=${encode(it)}" } ?: ""),
+            request?.let { AppJson.encodeToString(PlayRequest.serializer(), it) },
+        )
 
     suspend fun pause() = command("PUT", "/me/player/pause")
     suspend fun next() = command("POST", "/me/player/next")
@@ -133,11 +138,14 @@ class SpotifyWebApi(
                 put("Accept-Encoding", "gzip")
                 if (jsonBody != null) put("Content-Type", "application/json")
             }
+            val started = System.nanoTime()
             val response = try {
                 transport.request(method, BASE_URL + path, headers, jsonBody?.encodeToByteArray())
             } catch (e: NetworkException) {
+                Log.d(TAG, "$method $path failed after ${elapsedMs(started)} ms: ${e.message}")
                 return ApiResult.Failure(ApiError.Offline(e.message ?: "No connection"))
             }
+            Log.d(TAG, "$method $path -> ${response.status} in ${elapsedMs(started)} ms")
 
             when {
                 response.status == 204 -> return ApiResult.NoContent
@@ -153,7 +161,12 @@ class SpotifyWebApi(
                     Log.w(TAG, "Rate limited by Spotify, retrying in ${waitSeconds}s")
                     sleep(waitSeconds * 1000)
                 }
-                else -> return ApiResult.Failure(ApiError.Http(response.status, response.errorMessage()))
+                else -> {
+                    val error = response.webApiError()
+                    return ApiResult.Failure(
+                        ApiError.Http(response.status, error?.message?.takeIf { it.isNotBlank() } ?: "HTTP ${response.status}", error?.reason)
+                    )
+                }
             }
         }
     }
@@ -170,10 +183,10 @@ class SpotifyWebApi(
         ApiResult.Failure(ApiError.Http(e.status, e.message ?: "Spotify login error"))
     }
 
-    private fun HttpResponse.errorMessage(): String =
-        runCatching { AppJson.decodeFromString(WebApiErrorResponse.serializer(), bodyText()).error?.message }.getOrNull()
-            ?.takeIf { it.isNotBlank() }
-            ?: "HTTP $status"
+    private fun HttpResponse.webApiError() =
+        runCatching { AppJson.decodeFromString(WebApiErrorResponse.serializer(), bodyText()).error }.getOrNull()
+
+    private fun elapsedMs(startNanos: Long) = (System.nanoTime() - startNanos) / 1_000_000
 
     companion object {
         const val BASE_URL = "https://api.spotify.com/v1"

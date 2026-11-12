@@ -150,7 +150,7 @@ data class PlayRequest(
 )
 
 @Serializable
-data class WebApiError(val status: Int? = null, val message: String? = null)
+data class WebApiError(val status: Int? = null, val message: String? = null, val reason: String? = null)
 
 @Serializable
 data class WebApiErrorResponse(val error: WebApiError? = null)

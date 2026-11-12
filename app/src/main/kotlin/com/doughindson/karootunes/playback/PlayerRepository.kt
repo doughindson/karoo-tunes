@@ -130,11 +130,12 @@ class PlayerRepository(
 
     private suspend fun poll() {
         val result = controller.snapshot()
+        Log.d(TAG, "Poll: ${result.describe()}")
         if (commandsInFlight.get() > 0) return
         _state.update { current ->
             when (result) {
                 is ApiResult.Ok -> PlayerReducer.applySnapshot(current, result.value, now())
-                ApiResult.NoContent -> PlayerReducer.noPlayer()
+                ApiResult.NoContent -> PlayerReducer.noPlayer(current)
                 is ApiResult.Failure -> when (val error = result.error) {
                     is ApiError.NotLoggedIn -> PlayerReducer.notLoggedIn()
                     is ApiError.Offline -> PlayerReducer.refreshFailed(current, PlayerError("Offline", error.message))
@@ -168,6 +169,12 @@ class PlayerRepository(
                 val highRes = settings.current().highResThumbnails
                 upcoming.mapNotNull { it.imageUrl(highRes) }.forEach(thumbnails::prefetch)
             }
+    }
+
+    private fun ApiResult<PlaybackSnapshot>.describe(): String = when (this) {
+        is ApiResult.Ok -> "${if (value.isPlaying) "playing" else "paused"} ${value.track?.name} on ${value.deviceName}"
+        ApiResult.NoContent -> "no active device"
+        is ApiResult.Failure -> "failed: $error"
     }
 
     private companion object {

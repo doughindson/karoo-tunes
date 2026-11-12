@@ -13,7 +13,8 @@ interface PlaybackController {
     suspend fun upcoming(): ApiResult<List<Track>>
     suspend fun isLiked(uri: String): ApiResult<Boolean>
 
-    suspend fun play(): ApiResult<Unit>
+    /** Resumes playback; with [deviceId], on that device even when Spotify has gone idle. */
+    suspend fun play(deviceId: String? = null): ApiResult<Unit>
     suspend fun pause(): ApiResult<Unit>
     suspend fun next(): ApiResult<Unit>
     suspend fun previous(): ApiResult<Unit>

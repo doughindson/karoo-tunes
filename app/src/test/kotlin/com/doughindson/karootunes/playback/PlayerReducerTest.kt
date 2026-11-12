@@ -103,4 +103,25 @@ class PlayerReducerTest {
         assertFalse(PlayerReducer.isAllowed(playing.copy(disallowed = setOf(PlayerCommand.NEXT)), PlayerCommand.NEXT))
         assertTrue(PlayerReducer.isAllowed(playing, PlayerCommand.NEXT))
     }
+
+    @Test
+    fun `when Spotify goes idle the last track stays and play resumes on the last device`() {
+        val active = PlayerReducer.applySnapshot(playing, snapshot(track(1)).copy(deviceId = "phone", deviceName = "Pixel"), now = 0)
+        val idle = PlayerReducer.noPlayer(active)
+
+        assertEquals(Connection.NO_PLAYER, idle.connection)
+        assertEquals(track(1), idle.track)
+        assertFalse(idle.isPlaying)
+        assertEquals("phone", idle.lastDeviceId)
+        assertEquals("Press play to resume on Pixel", idle.error?.message)
+        assertTrue(PlayerReducer.isAllowed(idle, PlayerCommand.PLAY))
+        assertFalse(PlayerReducer.isAllowed(idle, PlayerCommand.NEXT))
+    }
+
+    @Test
+    fun `idle without a known device asks to start Spotify`() {
+        val idle = PlayerReducer.noPlayer(PlayerState())
+        assertEquals("No active player", idle.error?.title)
+        assertFalse(PlayerReducer.isAllowed(idle, PlayerCommand.PLAY))
+    }
 }

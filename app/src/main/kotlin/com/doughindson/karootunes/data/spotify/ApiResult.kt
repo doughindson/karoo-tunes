@@ -4,7 +4,8 @@ sealed class ApiError(val message: String) {
     /** No response at all: no signal, companion app unreachable, timeout. */
     class Offline(message: String) : ApiError(message)
     class NotLoggedIn(message: String) : ApiError(message)
-    class Http(val status: Int, message: String) : ApiError(message)
+    /** [reason] is Spotify's machine-readable code, e.g. NO_ACTIVE_DEVICE or PREMIUM_REQUIRED. */
+    class Http(val status: Int, message: String, val reason: String? = null) : ApiError(message)
     class Unexpected(message: String) : ApiError(message)
 
     override fun toString(): String = "${this::class.simpleName}($message)"

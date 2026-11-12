@@ -19,6 +19,8 @@ object PlayerReducer {
             shuffle = snapshot.shuffle,
             repeat = snapshot.repeat,
             disallowed = snapshot.disallowed,
+            lastDeviceId = snapshot.deviceId ?: state.lastDeviceId,
+            lastDeviceName = snapshot.deviceName ?: state.lastDeviceName,
             isLiked = if (trackChanged) null else state.isLiked,
             previousTrack = if (trackChanged && state.track != null) state.track else state.previousTrack,
             upcoming = if (trackChanged) state.upcoming.dropWhile { it.uri == snapshot.track?.uri } else state.upcoming,
@@ -26,9 +28,19 @@ object PlayerReducer {
         )
     }
 
-    fun noPlayer(): PlayerState = PlayerState(
+    /**
+     * Spotify reports no active device. Keep showing the last track, paused, so Play can resume it on
+     * the last device; without one, ask the rider to start Spotify on the phone.
+     */
+    fun noPlayer(state: PlayerState): PlayerState = state.copy(
         connection = Connection.NO_PLAYER,
-        error = PlayerError("No active player", "Start playing Spotify on your phone"),
+        isPlaying = false,
+        disallowed = emptySet(),
+        error = if (state.lastDeviceId != null) {
+            PlayerError("Paused", "Press play to resume on ${state.lastDeviceName ?: "your phone"}")
+        } else {
+            PlayerError("No active player", "Start playing Spotify on your phone")
+        },
     )
 
     fun notLoggedIn(): PlayerState = PlayerState(
@@ -50,6 +62,7 @@ object PlayerReducer {
     fun isAllowed(state: PlayerState, command: PlayerCommand): Boolean = when (command) {
         PlayerCommand.TOGGLE_OPTIONS -> true
         PlayerCommand.TOGGLE_LIKE -> state.hasPlayer && state.track?.uri != null
+        PlayerCommand.PLAY -> (state.hasPlayer || state.canResumeIdle) && command !in state.disallowed
         else -> state.hasPlayer && command !in state.disallowed
     }
 
@@ -57,7 +70,7 @@ object PlayerReducer {
     fun optimistic(state: PlayerState, command: PlayerCommand, now: Long): PlayerState {
         val position = state.positionAt(now)
         return when (command) {
-            PlayerCommand.PLAY -> state.copy(isPlaying = true, positionMs = position, positionUpdatedAt = now)
+            PlayerCommand.PLAY -> state.copy(isPlaying = true, positionMs = position, positionUpdatedAt = now, error = null)
             PlayerCommand.PAUSE -> state.copy(isPlaying = false, positionMs = position, positionUpdatedAt = now)
             PlayerCommand.NEXT -> state.copy(
                 track = state.upcoming.firstOrNull(),
