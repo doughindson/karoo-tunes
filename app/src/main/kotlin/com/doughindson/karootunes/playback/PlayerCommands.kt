@@ -36,7 +36,7 @@ class PlayerCommands(
         try {
             val after = repository.updateAndGet { PlayerReducer.optimistic(it, command, now) }
             val result = when (command) {
-                PlayerCommand.PLAY -> controller.play(deviceId = if (before.hasPlayer) null else before.lastDeviceId)
+                PlayerCommand.PLAY -> playOnKnownDevice(before)
                 PlayerCommand.PAUSE -> controller.pause()
                 PlayerCommand.NEXT -> controller.next()
                 PlayerCommand.PREVIOUS -> if (restartsTrack) controller.seekTo(0) else controller.previous()
@@ -55,8 +55,7 @@ class PlayerCommands(
                 if (command == PlayerCommand.TOGGLE_LIKE) {
                     repository.updateAndGet { if (it.track?.uri == before.track?.uri) it.copy(isLiked = before.isLiked) else it }
                 }
-                val resumingIdle = command == PlayerCommand.PLAY && !before.hasPlayer
-                if (resumingIdle && result.error.isDeviceGone()) {
+                if (command == PlayerCommand.PLAY && before.lastDeviceId != null && result.error.isDeviceGone()) {
                     repository.updateAndGet { PlayerReducer.resumeFailed(it) }
                     karoo.showAlert(
                         command.alertTitle(),
@@ -89,6 +88,21 @@ class PlayerCommands(
     }
 
     suspend fun setLiked(uris: List<String>, liked: Boolean) = controller.setLiked(uris, liked).also { repository.requestRefresh() }
+
+    /**
+     * Resumes playback. Spotify marks a paused phone inactive after a few seconds, and a plain Play
+     * then fails with "No active device"; naming the last device can still reach it, so retry once.
+     */
+    private suspend fun playOnKnownDevice(before: PlayerState): ApiResult<Unit> {
+        val lastDevice = before.lastDeviceId
+        if (!before.hasPlayer && lastDevice != null) return controller.play(deviceId = lastDevice)
+        val result = controller.play()
+        if (lastDevice != null && result is ApiResult.Failure && result.error.isDeviceGone()) {
+            Log.d(TAG, "No active device; retrying play on the last device")
+            return controller.play(deviceId = lastDevice)
+        }
+        return result
+    }
 
     /**
      * What to tell the rider about a failed command, or null when it isn't worth an alert. Spotify
