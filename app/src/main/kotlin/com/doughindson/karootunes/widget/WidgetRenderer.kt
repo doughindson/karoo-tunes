@@ -12,13 +12,10 @@ import com.doughindson.karootunes.data.settings.SettingsRepository
 import com.doughindson.karootunes.playback.PlayerRepository
 import com.doughindson.karootunes.playback.WidgetUiStateHolder
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /** Turns player state into RemoteViews for one layout, rendering only when the visible model changes. */
@@ -33,11 +30,10 @@ class WidgetRenderer(
     private val glance = GlanceRemoteViews()
 
     fun models(layout: PlayerLayout): Flow<WidgetModel> {
-        // Only layouts with a progress bar need a clock; the others render on state changes alone.
-        // Every render makes the Karoo rebuild the field on its UI thread (the one handling taps),
-        // so the bar advances every few seconds rather than every second.
-        val ticks = if (layout.showsProgress) ticker(PROGRESS_TICK_MS) else flowOf(Unit)
-        return combine(player.state, widgetUi.state, settings.settings, ticks) { state, ui, settings, _ ->
+        // Renders only when the state changes; there's deliberately no clock. Every render makes the
+        // Karoo rebuild the field on its UI thread (the one handling taps), so the progress bar moves
+        // when the player refreshes (every 25 s, after a press, or at the end of a track).
+        return combine(player.state, widgetUi.state, settings.settings) { state, ui, settings ->
             WidgetModel.from(state, ui, layout, settings.highResThumbnails, player.now())
         }.distinctUntilChanged()
     }
@@ -53,16 +49,5 @@ class WidgetRenderer(
                     Log.v(TAG, "Rendered ${layout.name} in ${(System.nanoTime() - started) / 1_000_000} ms")
                 }
             }
-    }
-
-    private companion object {
-        const val PROGRESS_TICK_MS = 5_000L
-    }
-
-    private fun ticker(periodMs: Long) = flow {
-        while (true) {
-            emit(Unit)
-            delay(periodMs)
-        }
     }
 }
