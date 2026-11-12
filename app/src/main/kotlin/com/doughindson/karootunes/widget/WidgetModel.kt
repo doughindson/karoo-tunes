@@ -116,8 +116,8 @@ data class WidgetModel(
             )
         }
 
-        /** The bar is a few hundred pixels wide; finer steps would only cause invisible re-renders. */
-        private const val PROGRESS_STEPS = 400
+        /** Coarse enough that small position corrections from Spotify don't cause a re-render. */
+        private const val PROGRESS_STEPS = 200
 
         private fun Float.roundTo(steps: Int): Float = kotlin.math.round(this * steps) / steps
     }

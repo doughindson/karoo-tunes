@@ -1,10 +1,12 @@
 package com.doughindson.karootunes.widget
 
 import android.content.Context
+import android.util.Log
 import android.widget.RemoteViews
 import androidx.compose.ui.unit.DpSize
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import androidx.glance.appwidget.GlanceRemoteViews
+import com.doughindson.karootunes.TAG
 import com.doughindson.karootunes.data.ThumbnailCache
 import com.doughindson.karootunes.data.settings.SettingsRepository
 import com.doughindson.karootunes.playback.PlayerRepository
@@ -32,7 +34,9 @@ class WidgetRenderer(
 
     fun models(layout: PlayerLayout): Flow<WidgetModel> {
         // Only layouts with a progress bar need a clock; the others render on state changes alone.
-        val ticks = if (layout.showsProgress) ticker(1_000) else flowOf(Unit)
+        // Every render makes the Karoo rebuild the field on its UI thread (the one handling taps),
+        // so the bar advances every few seconds rather than every second.
+        val ticks = if (layout.showsProgress) ticker(PROGRESS_TICK_MS) else flowOf(Unit)
         return combine(player.state, widgetUi.state, settings.settings, ticks) { state, ui, settings, _ ->
             WidgetModel.from(state, ui, layout, settings.highResThumbnails, player.now())
         }.distinctUntilChanged()
@@ -44,8 +48,15 @@ class WidgetRenderer(
             .flatMapLatest { model -> thumbnails.bitmap(model.artworkUrl).map { model to it } }
             .distinctUntilChanged()
             .map { (model, bitmap) ->
-                glance.compose(context, size) { PlayerWidget(model, bitmap, size) }.remoteViews
+                val started = System.nanoTime()
+                glance.compose(context, size) { PlayerWidget(model, bitmap, size) }.remoteViews.also {
+                    Log.v(TAG, "Rendered ${layout.name} in ${(System.nanoTime() - started) / 1_000_000} ms")
+                }
             }
+    }
+
+    private companion object {
+        const val PROGRESS_TICK_MS = 5_000L
     }
 
     private fun ticker(periodMs: Long) = flow {

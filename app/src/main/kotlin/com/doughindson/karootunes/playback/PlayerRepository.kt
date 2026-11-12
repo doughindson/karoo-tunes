@@ -14,6 +14,7 @@ import com.doughindson.karootunes.widget.PlayerDataType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -29,7 +31,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Owns the player state and keeps it in sync with Spotify while the player is (or may soon be) on
@@ -49,7 +50,7 @@ class PlayerRepository(
     val state: StateFlow<PlayerState> = _state.asStateFlow()
 
     private val refreshRequests = Channel<Unit>(Channel.CONFLATED)
-    private val commandsInFlight = AtomicInteger(0)
+    private val commandsInFlight = MutableStateFlow(0)
     private var job: Job? = null
 
     @Synchronized
@@ -80,8 +81,13 @@ class PlayerRepository(
     fun updateAndGet(transform: (PlayerState) -> PlayerState): PlayerState = _state.updateAndGet(transform)
 
     /** While a command is in flight, poll results may predate it and would undo the optimistic update. */
-    fun beginCommand() = commandsInFlight.incrementAndGet()
-    fun endCommand() = commandsInFlight.decrementAndGet()
+    fun beginCommand() = commandsInFlight.update { it + 1 }
+    fun endCommand() = commandsInFlight.update { it - 1 }
+
+    /** The Karoo sends one request at a time: background requests wait until commands are through. */
+    private suspend fun awaitNoCommands() {
+        commandsInFlight.first { it == 0 }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun shouldPoll(): Flow<Boolean> = combine(
@@ -108,6 +114,7 @@ class PlayerRepository(
             Log.d(TAG, "Player polling active: $active")
             if (!active) return@collectLatest
             while (true) {
+                awaitNoCommands()
                 poll()
                 val requested = withTimeoutOrNull(nextPollDelayMs()) { refreshRequests.receive() } != null
                 // After a command, wait until presses stop before refreshing. The Karoo sends one request
@@ -134,7 +141,7 @@ class PlayerRepository(
     private suspend fun poll() {
         val result = controller.snapshot()
         Log.d(TAG, "Poll: ${result.describe()}")
-        if (commandsInFlight.get() > 0) return
+        if (commandsInFlight.value > 0) return
         _state.update { current ->
             when (result) {
                 is ApiResult.Ok -> PlayerReducer.applySnapshot(current, result.value, now())
@@ -157,6 +164,10 @@ class PlayerRepository(
             .distinctUntilChanged()
             .filter { (uri, liked) -> uri != null && liked == null }
             .collectLatest { (uri, _) ->
+                // Wait until the track has settled (Next/Previous show it before Spotify confirms) and
+                // any command is through, so this lookup never sits ahead of a button press.
+                delay(LIKED_LOOKUP_DELAY_MS)
+                awaitNoCommands()
                 val liked = (controller.isLiked(uri!!) as? ApiResult.Ok)?.value ?: return@collectLatest
                 _state.update { if (it.track?.uri == uri && it.isLiked == null) it.copy(isLiked = liked) else it }
             }
@@ -176,5 +187,6 @@ class PlayerRepository(
         const val TRACK_END_GRACE_MS = 2_000L
         const val COMMAND_SETTLE_MS = 2_500L
         const val NO_PLAYER_INTERVAL_MS = 10_000L
+        const val LIKED_LOOKUP_DELAY_MS = 3_000L
     }
 }
