@@ -30,11 +30,10 @@ class WidgetRenderer(
     private val glance = GlanceRemoteViews()
 
     fun models(layout: PlayerLayout): Flow<WidgetModel> {
-        // Renders only when the state changes; there's deliberately no clock. Every render makes the
-        // Karoo rebuild the field on its UI thread (the one handling taps), so the progress bar moves
-        // when the player refreshes (every 25 s, after a press, or at the end of a track).
+        // Renders only when something visible changes. Every render makes the Karoo rebuild the field
+        // on its UI thread (the one handling taps), which is also why there is no progress bar.
         return combine(player.state, widgetUi.state, settings.settings) { state, ui, settings ->
-            WidgetModel.from(state, ui, layout, settings.highResThumbnails, player.now())
+            WidgetModel.from(state, ui, layout, settings.highResThumbnails)
         }.distinctUntilChanged()
     }
 

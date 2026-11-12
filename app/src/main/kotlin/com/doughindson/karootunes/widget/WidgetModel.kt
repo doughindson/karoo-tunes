@@ -27,8 +27,6 @@ data class WidgetModel(
     val subtitleMaxLines: Int,
     val isPlaying: Boolean,
     val isEpisode: Boolean,
-    /** 0..1, or null when the layout has no progress bar or the duration is unknown. */
-    val progress: Float?,
     val optionsOpen: Boolean,
     val liked: Boolean,
     val shuffle: Boolean,
@@ -44,7 +42,6 @@ data class WidgetModel(
             ui: WidgetUiState,
             layout: PlayerLayout,
             highResArtwork: Boolean,
-            now: Long,
         ): WidgetModel {
             val track = state.track
             val error = state.error
@@ -91,13 +88,6 @@ data class WidgetModel(
             // pending command are ignored in PlayerCommands instead.
             val enabled = PlayerCommand.entries.filterTo(mutableSetOf()) { command -> PlayerReducer.isAllowed(state, command) }
 
-            val duration = track?.durationMs
-            val progress = if (layout.showsProgress && duration != null && duration > 0) {
-                (state.positionAt(now).toFloat() / duration).coerceIn(0f, 1f).roundTo(PROGRESS_STEPS)
-            } else {
-                null
-            }
-
             return WidgetModel(
                 layout = layout,
                 title = title,
@@ -106,7 +96,6 @@ data class WidgetModel(
                 subtitleMaxLines = subtitleLines,
                 isPlaying = state.isPlaying,
                 isEpisode = track?.type == MediaType.EPISODE,
-                progress = progress,
                 optionsOpen = ui.optionsOpen,
                 liked = state.isLiked == true,
                 shuffle = state.shuffle,
@@ -115,10 +104,5 @@ data class WidgetModel(
                 artworkUrl = if (layout.showsArtwork) track?.imageUrl(highResArtwork) else null,
             )
         }
-
-        /** Coarse enough that small position corrections from Spotify don't cause a re-render. */
-        private const val PROGRESS_STEPS = 200
-
-        private fun Float.roundTo(steps: Int): Float = kotlin.math.round(this * steps) / steps
     }
 }

@@ -43,7 +43,7 @@ fun PlayerWidget(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
 }
 
 /**
- * Square album art with a column of option buttons beside it, track text, progress bar, and a
+ * Square album art with a column of option buttons beside it, track text, and a
  * transport row filling the rest of the page.
  */
 @Composable
@@ -84,8 +84,6 @@ private fun FullPageLayout(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
 
         Spacer(GlanceModifier.height(12.dp))
         TrackText(model)
-        Spacer(GlanceModifier.height(SECTION_GAP))
-        ProgressBar(model)
         Spacer(GlanceModifier.height(12.dp))
 
         Row(modifier = GlanceModifier.fillMaxWidth().defaultWeight()) {
@@ -97,12 +95,11 @@ private fun FullPageLayout(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
     }
 }
 
-/** Track text (or the options row) on top, progress bar, then a large transport row. */
+/** Track text (or the options row) on top, then a large transport row. */
 @Composable
 private fun MediumLayout(model: WidgetModel, size: DpSize) {
     val contentWidth = size.width - OUTER_PADDING * 2
-    val progressHeight = 8.dp
-    val remaining = size.height - OUTER_PADDING * 2 - SECTION_GAP * 2 - progressHeight
+    val remaining = size.height - OUTER_PADDING * 2 - SECTION_GAP
     // Top row : transport row = 5 : 7.
     val topHeight = floor(remaining.value * 5f / 12f).dp
     val bottomHeight = remaining - topHeight
@@ -117,8 +114,6 @@ private fun MediumLayout(model: WidgetModel, size: DpSize) {
                 CommandButton(model, PlayerCommand.TOGGLE_OPTIONS, GlanceModifier.size(topHeight), iconSizeFor(topHeight, topHeight))
             }
         }
-        Spacer(GlanceModifier.height(SECTION_GAP))
-        ProgressBar(model, progressHeight)
         Spacer(GlanceModifier.height(SECTION_GAP))
         TransportRow(model, contentWidth, bottomHeight)
     }

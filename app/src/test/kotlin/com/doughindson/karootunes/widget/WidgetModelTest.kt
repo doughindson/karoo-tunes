@@ -19,7 +19,7 @@ class WidgetModelTest {
     private val playing = PlayerState(connection = Connection.ACTIVE, track = track, isPlaying = true, positionMs = 50_000)
 
     private fun model(state: PlayerState, layout: PlayerLayout = PlayerLayout.FULL_PAGE, ui: WidgetUiState = WidgetUiState(), highRes: Boolean = false) =
-        WidgetModel.from(state, ui, layout, highRes, now = 0)
+        WidgetModel.from(state, ui, layout, highRes)
 
     @Test
     fun `layout follows the field's grid size and real height`() {
@@ -31,22 +31,20 @@ class WidgetModelTest {
     }
 
     @Test
-    fun `track text and progress`() {
+    fun `track text and artwork`() {
         val m = model(playing)
         assertEquals(WidgetText.Literal("Song"), m.title)
         assertEquals(WidgetText.Literal("Band"), m.subtitle)
-        assertEquals(0.5f, m.progress)
         assertEquals("s", m.artworkUrl)
         assertEquals("m", model(playing, highRes = true).artworkUrl)
     }
 
     @Test
-    fun `layouts without a progress bar or artwork don't depend on time or images`() {
+    fun `layouts without artwork don't load images, and time alone never changes the model`() {
         val m = model(playing, PlayerLayout.SMALL)
-        assertNull(m.progress)
         assertNull(m.artworkUrl)
-        // Same model a second later: no re-render needed.
-        assertEquals(m, WidgetModel.from(playing, WidgetUiState(), PlayerLayout.SMALL, false, now = 1_000))
+        // A later position (Spotify keeps playing) is not a visible change: no re-render.
+        assertEquals(model(playing), model(playing.copy(positionMs = 90_000)))
     }
 
     @Test

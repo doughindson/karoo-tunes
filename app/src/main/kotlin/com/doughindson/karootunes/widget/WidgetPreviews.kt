@@ -25,7 +25,7 @@ private val podcast = playing.copy(track = Track("spotify:episode:1", "Episode 4
 private val offline = PlayerState(error = PlayerError("Offline", "Could not reach Spotify. Check the companion app connection."))
 
 private fun model(state: PlayerState, layout: PlayerLayout, optionsOpen: Boolean = false) =
-    WidgetModel.from(state, WidgetUiState(optionsOpen = optionsOpen), layout, highResArtwork = false, now = 0)
+    WidgetModel.from(state, WidgetUiState(optionsOpen = optionsOpen), layout, highResArtwork = false)
 
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 480, heightDp = 800)

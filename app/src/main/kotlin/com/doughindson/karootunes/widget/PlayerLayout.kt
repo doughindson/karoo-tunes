@@ -1,11 +1,11 @@
 package com.doughindson.karootunes.widget
 
 /** The four widget layouts, from a single row of buttons up to a full page with album art. */
-enum class PlayerLayout(val showsProgress: Boolean, val showsArtwork: Boolean) {
-    SINGLE_FIELD(showsProgress = false, showsArtwork = false),
-    SMALL(showsProgress = false, showsArtwork = false),
-    MEDIUM(showsProgress = true, showsArtwork = false),
-    FULL_PAGE(showsProgress = true, showsArtwork = true);
+enum class PlayerLayout(val showsArtwork: Boolean) {
+    SINGLE_FIELD(showsArtwork = false),
+    SMALL(showsArtwork = false),
+    MEDIUM(showsArtwork = false),
+    FULL_PAGE(showsArtwork = true);
 
     companion object {
         /** Below this height the Small layout's text and button row don't both fit. */

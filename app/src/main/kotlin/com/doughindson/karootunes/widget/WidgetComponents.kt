@@ -16,7 +16,6 @@ import androidx.glance.LocalContext
 import androidx.glance.action.Action
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
-import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.background
@@ -46,8 +45,6 @@ internal object WidgetColors {
     val iconDisabled = ColorProvider(day = Color(0xFFB8B8B8), night = Color(0xFF5A5A5A))
     val iconActive = ColorProvider(day = Color(0xFF15883E), night = Color(0xFF1DB954))
     val onAccent = ColorProvider(day = Color(0xFF000000), night = Color(0xFF000000))
-    val progressTrack = ColorProvider(day = Color(0xFFD0D0D0), night = Color(0xFF333333))
-    val progressFill = ColorProvider(day = Color(0xFF555555), night = Color(0xFF989898))
 }
 
 internal fun commandAction(command: PlayerCommand): Action =
@@ -197,15 +194,6 @@ internal fun TrackText(model: WidgetModel, modifier: GlanceModifier = GlanceModi
     }
 }
 
-@Composable
-internal fun ProgressBar(model: WidgetModel, height: Dp = 8.dp) {
-    LinearProgressIndicator(
-        progress = model.progress ?: 0f,
-        modifier = GlanceModifier.fillMaxWidth().height(height),
-        color = WidgetColors.progressFill,
-        backgroundColor = WidgetColors.progressTrack,
-    )
-}
 
 internal fun iconSizeFor(buttonWidth: Dp, buttonHeight: Dp, fraction: Float = 0.55f): Dp =
     kotlin.math.min(36f, kotlin.math.min(buttonWidth.value, buttonHeight.value) * fraction).dp
