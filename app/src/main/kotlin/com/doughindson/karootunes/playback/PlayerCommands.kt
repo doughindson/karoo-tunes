@@ -17,10 +17,6 @@ class PlayerCommands(
     private val karoo: KarooGateway,
 ) {
     suspend fun run(command: PlayerCommand) {
-        if (command == PlayerCommand.TOGGLE_OPTIONS) {
-            widgetUi.toggleOptions()
-            return
-        }
         val before = repository.state.value
         if (!PlayerReducer.isAllowed(before, command)) {
             // Our state may be stale (e.g. Spotify was just restarted on the phone): check now.
@@ -31,7 +27,6 @@ class PlayerCommands(
 
         val now = repository.now()
         val restartsTrack = command == PlayerCommand.PREVIOUS && PlayerReducer.previousRestartsTrack(before, now)
-        if (command == PlayerCommand.NEXT || command == PlayerCommand.PREVIOUS) widgetUi.closeOptions()
         repository.beginCommand()
         try {
             val after = repository.updateAndGet { PlayerReducer.optimistic(it, command, now) }
@@ -43,8 +38,7 @@ class PlayerCommands(
                 PlayerCommand.SEEK_BACK, PlayerCommand.SEEK_FORWARD -> controller.seekTo(after.positionMs)
                 PlayerCommand.TOGGLE_SHUFFLE -> controller.setShuffle(after.shuffle)
                 PlayerCommand.CYCLE_REPEAT -> controller.setRepeat(after.repeat)
-                PlayerCommand.TOGGLE_LIKE -> controller.setLiked(listOfNotNull(before.track?.uri), after.isLiked == true)
-                PlayerCommand.TOGGLE_OPTIONS -> ApiResult.Ok(Unit)
+                PlayerCommand.TOGGLE_LIKE -> toggleLikeOnPlayingTrack(before, after, now)
             }
             if (result is ApiResult.Ok && (command == PlayerCommand.PLAY || command == PlayerCommand.PAUSE)) {
                 repository.expectPlaying(command == PlayerCommand.PLAY)
@@ -88,6 +82,21 @@ class PlayerCommands(
     }
 
     suspend fun setLiked(uris: List<String>, liked: Boolean) = controller.setLiked(uris, liked).also { repository.requestRefresh() }
+
+    /**
+     * Likes the song that is actually playing. The rider may have skipped with the Karoo's own media
+     * controls since our last refresh, so check first; if the song changed, show it and like it.
+     */
+    private suspend fun toggleLikeOnPlayingTrack(before: PlayerState, after: PlayerState, now: Long): ApiResult<Unit> {
+        val playing = (controller.snapshot() as? ApiResult.Ok)?.value
+        val playingUri = playing?.track?.uri
+        if (playing != null && playingUri != null && playingUri != before.track?.uri) {
+            Log.d(TAG, "Track changed since the last refresh; liking the one now playing")
+            repository.updateAndGet { PlayerReducer.applySnapshot(it, playing, now).copy(isLiked = true) }
+            return controller.setLiked(listOf(playingUri), liked = true)
+        }
+        return controller.setLiked(listOfNotNull(before.track?.uri), after.isLiked == true)
+    }
 
     /**
      * Resumes playback. Spotify marks a paused phone inactive after a few seconds, and a plain Play
@@ -134,6 +143,5 @@ class PlayerCommands(
         PlayerCommand.TOGGLE_SHUFFLE -> "Shuffle"
         PlayerCommand.CYCLE_REPEAT -> "Repeat"
         PlayerCommand.TOGGLE_LIKE -> "Liked Songs"
-        PlayerCommand.TOGGLE_OPTIONS -> "Options"
     }
 }

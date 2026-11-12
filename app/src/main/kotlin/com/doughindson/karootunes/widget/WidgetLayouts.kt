@@ -25,26 +25,27 @@ import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
 import com.doughindson.karootunes.R
-import com.doughindson.karootunes.playback.PlayerCommand
 import kotlin.math.floor
 
 private val OUTER_PADDING = 12.dp
 private val SECTION_GAP = 10.dp
+
+/** Space for the title and artist lines under the album art. */
+private val TRACK_TEXT_HEIGHT = 48.dp
 
 /** Glance sizes everything explicitly: RemoteViews can't measure, so all maths happens here. */
 @Composable
 fun PlayerWidget(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
     when (model.layout) {
         PlayerLayout.FULL_PAGE -> FullPageLayout(model, artwork, size)
-        PlayerLayout.MEDIUM -> MediumLayout(model, size)
-        PlayerLayout.SMALL -> SmallLayout(model, size)
-        PlayerLayout.SINGLE_FIELD -> SingleFieldLayout(model, size)
+        PlayerLayout.MEDIUM -> MediumLayout(model, artwork, size)
+        PlayerLayout.COMPACT -> CompactLayout(model, size)
     }
 }
 
 /**
- * Square album art with a column of option buttons beside it, track text, and a
- * transport row filling the rest of the page.
+ * Square album art with a column of option buttons beside it, track text, and a transport row
+ * filling the rest of the page.
  */
 @Composable
 private fun FullPageLayout(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
@@ -54,34 +55,9 @@ private fun FullPageLayout(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
     val button = floor(rowWidth / 5.6f).dp
     val gap = floor(button.value * 0.15f).dp
     val artSize = button * OPTION_COUNT + gap * (OPTION_COUNT - 1)
-    val iconSize = iconSizeFor(button, button)
 
     Column(modifier = GlanceModifier.fillMaxSize().padding(OUTER_PADDING)) {
-        Row(modifier = GlanceModifier.fillMaxWidth().height(artSize)) {
-            Box(
-                modifier = GlanceModifier.size(artSize)
-                    .background(ImageProvider(R.drawable.widget_artwork_placeholder))
-                    .cornerRadius(8.dp),
-            ) {
-                // An empty placeholder reads as "loading" the moment the track changes.
-                if (artwork != null) {
-                    Image(
-                        ImageProvider(artwork),
-                        LocalContext.current.getString(R.string.album_art),
-                        modifier = GlanceModifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-            }
-            Spacer(GlanceModifier.width(gap))
-            Column {
-                repeat(OPTION_COUNT) { index ->
-                    if (index > 0) Spacer(GlanceModifier.height(gap))
-                    OptionButton(model, index, GlanceModifier.size(button), iconSize)
-                }
-            }
-        }
-
+        ArtworkWithOptions(model, artwork, artSize, buttonWidth = button, gap = gap)
         Spacer(GlanceModifier.height(12.dp))
         TrackText(model)
         Spacer(GlanceModifier.height(12.dp))
@@ -95,86 +71,69 @@ private fun FullPageLayout(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
     }
 }
 
-/** Track text (or the options row) on top, then a large transport row. */
+/**
+ * Album art with the four option buttons beside it and the track underneath. The art takes the
+ * height that's left after the text; the buttons share the remaining width.
+ */
 @Composable
-private fun MediumLayout(model: WidgetModel, size: DpSize) {
-    val contentWidth = size.width - OUTER_PADDING * 2
-    val remaining = size.height - OUTER_PADDING * 2 - SECTION_GAP
-    // Top row : transport row = 5 : 7.
-    val topHeight = floor(remaining.value * 5f / 12f).dp
-    val bottomHeight = remaining - topHeight
+private fun MediumLayout(model: WidgetModel, artwork: Bitmap?, size: DpSize) {
+    val rowWidth = size.width - OUTER_PADDING * 2
+    val gap = 8.dp
+    val heightForArt = size.height - OUTER_PADDING * 2 - SECTION_GAP - TRACK_TEXT_HEIGHT
+    // Keep at least ~38% of the width for the buttons so they stay easy to hit.
+    val artSize = floor(minOf(heightForArt, rowWidth * 0.62f).value).dp
 
     Column(modifier = GlanceModifier.fillMaxSize().padding(OUTER_PADDING)) {
-        if (model.optionsOpen) {
-            OptionsRow(model, contentWidth, topHeight)
-        } else {
-            Row(modifier = GlanceModifier.fillMaxWidth().height(topHeight), verticalAlignment = Alignment.CenterVertically) {
-                TrackText(model, GlanceModifier.defaultWeight())
-                Spacer(GlanceModifier.width(floor(topHeight.value * 0.15f).dp))
-                CommandButton(model, PlayerCommand.TOGGLE_OPTIONS, GlanceModifier.size(topHeight), iconSizeFor(topHeight, topHeight))
+        ArtworkWithOptions(model, artwork, artSize, buttonWidth = rowWidth - artSize - gap, gap = gap)
+        Spacer(GlanceModifier.height(SECTION_GAP))
+        TrackText(model)
+    }
+}
+
+/** Just the four Spotify buttons, filling the field. */
+@Composable
+private fun CompactLayout(model: WidgetModel, size: DpSize) {
+    val width = size.width - OUTER_PADDING * 2
+    val height = size.height - OUTER_PADDING * 2
+    Box(modifier = GlanceModifier.fillMaxSize().padding(OUTER_PADDING), contentAlignment = Alignment.Center) {
+        ButtonRow(OPTION_COUNT, width, height, gap = floor(height.value * 0.12f).dp.coerceAtMost(12.dp)) { index, modifier ->
+            OptionButton(model, index, modifier, iconSizeFor(width / OPTION_COUNT, height))
+        }
+    }
+}
+
+/** Square [artSize] artwork, then a column of the four option buttons, each [buttonWidth] wide. */
+@Composable
+private fun ArtworkWithOptions(model: WidgetModel, artwork: Bitmap?, artSize: Dp, buttonWidth: Dp, gap: Dp) {
+    val buttonHeight = floor((artSize - gap * (OPTION_COUNT - 1)).value / OPTION_COUNT).dp
+    // The last button absorbs rounding so the column is exactly as tall as the art.
+    val lastHeight = artSize - gap * (OPTION_COUNT - 1) - buttonHeight * (OPTION_COUNT - 1)
+    // Wide, short buttons (medium layout) can take a larger share of their height for the icon.
+    val iconSize = iconSizeFor(buttonWidth, buttonHeight, fraction = if (buttonWidth > buttonHeight * 1.5f) 0.75f else 0.55f)
+
+    Row(modifier = GlanceModifier.fillMaxWidth().height(artSize)) {
+        Box(
+            modifier = GlanceModifier.size(artSize)
+                .background(ImageProvider(R.drawable.widget_artwork_placeholder))
+                .cornerRadius(8.dp),
+        ) {
+            // An empty placeholder reads as "loading" the moment the track changes.
+            if (artwork != null) {
+                Image(
+                    ImageProvider(artwork),
+                    LocalContext.current.getString(R.string.album_art),
+                    modifier = GlanceModifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
             }
         }
-        Spacer(GlanceModifier.height(SECTION_GAP))
-        TransportRow(model, contentWidth, bottomHeight)
-    }
-}
-
-/** One line of track text above the compact button row. */
-@Composable
-private fun SmallLayout(model: WidgetModel, size: DpSize) {
-    val textHeight = 28.dp
-    val contentWidth = size.width - OUTER_PADDING * 2
-    val rowHeight = size.height - OUTER_PADDING * 2 - SECTION_GAP - textHeight
-    Column(modifier = GlanceModifier.fillMaxSize().padding(OUTER_PADDING)) {
-        TrackText(model, GlanceModifier.fillMaxWidth().height(textHeight), showSubtitle = false)
-        Spacer(GlanceModifier.height(SECTION_GAP))
-        CompactRow(model, contentWidth, rowHeight)
-    }
-}
-
-/** Just the compact button row, filling the field. */
-@Composable
-private fun SingleFieldLayout(model: WidgetModel, size: DpSize) {
-    Box(modifier = GlanceModifier.fillMaxSize().padding(OUTER_PADDING), contentAlignment = Alignment.Center) {
-        CompactRow(model, size.width - OUTER_PADDING * 2, size.height - OUTER_PADDING * 2)
-    }
-}
-
-/** Transport buttons plus ⋮, or the options row while it's open. */
-@Composable
-private fun CompactRow(model: WidgetModel, width: Dp, height: Dp) {
-    if (model.optionsOpen) {
-        OptionsRow(model, width, height)
-    } else {
-        val commands = transportCommands(model) + PlayerCommand.TOGGLE_OPTIONS
-        ButtonRow(commands.size, width, height, gap = floor(height.value * 0.12f).dp.coerceAtMost(12.dp)) { index, modifier ->
-            CommandButton(model, commands[index], modifier, iconSizeFor(width / commands.size, height))
+        Spacer(GlanceModifier.width(gap))
+        Column {
+            repeat(OPTION_COUNT) { index ->
+                if (index > 0) Spacer(GlanceModifier.height(gap))
+                val height = if (index == OPTION_COUNT - 1) lastHeight else buttonHeight
+                OptionButton(model, index, GlanceModifier.size(buttonWidth, height), iconSize)
+            }
         }
     }
 }
-
-@Composable
-private fun OptionsRow(model: WidgetModel, width: Dp, height: Dp) {
-    ButtonRow(OPTION_COUNT, width, height, gap = floor(height.value * 0.12f).dp.coerceAtMost(12.dp)) { index, modifier ->
-        OptionButton(model, index, modifier, iconSizeFor(width / OPTION_COUNT, height))
-    }
-}
-
-/** Previous / play-pause / next with a wider centre button. */
-@Composable
-private fun TransportRow(model: WidgetModel, width: Dp, height: Dp) {
-    val gap = floor(height.value * 0.15f).dp.coerceAtMost(16.dp)
-    val usable = width - gap * 2
-    val side = floor(usable.value * 0.325f).dp
-    val centre = usable - side * 2
-    val iconSize = iconSizeFor(side, height, fraction = 0.4f)
-    val commands = transportCommands(model)
-    Row(modifier = GlanceModifier.fillMaxWidth().height(height), verticalAlignment = Alignment.CenterVertically) {
-        CommandButton(model, commands[0], GlanceModifier.size(side, height), iconSize)
-        Spacer(GlanceModifier.width(gap))
-        CommandButton(model, commands[1], GlanceModifier.size(centre, height), iconSize)
-        Spacer(GlanceModifier.width(gap))
-        CommandButton(model, commands[2], GlanceModifier.size(side, height), iconSize)
-    }
-}
-

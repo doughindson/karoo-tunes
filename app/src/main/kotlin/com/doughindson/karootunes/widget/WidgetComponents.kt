@@ -108,7 +108,6 @@ internal fun CommandButton(model: WidgetModel, command: PlayerCommand, modifier:
         PlayerCommand.CYCLE_REPEAT -> (if (model.repeat == RepeatMode.TRACK) R.drawable.ic_repeat_one else R.drawable.ic_repeat) to R.string.action_repeat
         PlayerCommand.TOGGLE_LIKE -> (if (model.liked) R.drawable.ic_favorite else R.drawable.ic_favorite_border) to
             (if (model.liked) R.string.action_unlike else R.string.action_like)
-        PlayerCommand.TOGGLE_OPTIONS -> R.drawable.ic_more_vert to R.string.action_more
     }
     val active = when (command) {
         PlayerCommand.TOGGLE_SHUFFLE -> model.shuffle
@@ -140,7 +139,7 @@ internal fun transportCommands(model: WidgetModel): List<PlayerCommand> = listOf
     if (model.isEpisode) PlayerCommand.SEEK_FORWARD else PlayerCommand.NEXT,
 )
 
-/** Like / Shuffle / Repeat / Library: the options shown beside the art or behind the ⋮ button. */
+/** Like / Shuffle / Repeat / Library: what only Karoo Tunes can do (the Karoo has its own play/pause/skip). */
 @Composable
 internal fun OptionButton(model: WidgetModel, index: Int, modifier: GlanceModifier, iconSize: Dp) {
     when (index) {

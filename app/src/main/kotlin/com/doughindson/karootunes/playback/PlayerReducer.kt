@@ -78,7 +78,6 @@ object PlayerReducer {
     }
 
     fun isAllowed(state: PlayerState, command: PlayerCommand): Boolean = when (command) {
-        PlayerCommand.TOGGLE_OPTIONS -> true
         PlayerCommand.TOGGLE_LIKE -> state.hasPlayer && state.track?.uri != null
         PlayerCommand.PLAY -> (state.hasPlayer || state.canResumeIdle) && command !in state.disallowed
         else -> state.hasPlayer && command !in state.disallowed
@@ -119,7 +118,6 @@ object PlayerReducer {
             PlayerCommand.TOGGLE_SHUFFLE -> state.copy(shuffle = !state.shuffle)
             PlayerCommand.CYCLE_REPEAT -> state.copy(repeat = state.repeat.next())
             PlayerCommand.TOGGLE_LIKE -> state.copy(isLiked = state.isLiked != true)
-            PlayerCommand.TOGGLE_OPTIONS -> state
         }
     }
 }

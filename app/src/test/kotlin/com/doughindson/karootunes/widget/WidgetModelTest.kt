@@ -22,12 +22,11 @@ class WidgetModelTest {
         WidgetModel.from(state, ui, layout, highRes)
 
     @Test
-    fun `layout follows the field's grid size and real height`() {
-        assertEquals(PlayerLayout.SINGLE_FIELD, PlayerLayout.forField(30 to 60, 800f))
-        assertEquals(PlayerLayout.SMALL, PlayerLayout.forField(60 to 20, 200f))
-        assertEquals(PlayerLayout.SINGLE_FIELD, PlayerLayout.forField(60 to 20, 120f))
-        assertEquals(PlayerLayout.MEDIUM, PlayerLayout.forField(60 to 30 + 1, 300f))
-        assertEquals(PlayerLayout.FULL_PAGE, PlayerLayout.forField(60 to 60, 800f))
+    fun `layout follows the field's grid size`() {
+        assertEquals(PlayerLayout.COMPACT, PlayerLayout.forField(30 to 60))
+        assertEquals(PlayerLayout.COMPACT, PlayerLayout.forField(60 to 21))
+        assertEquals(PlayerLayout.MEDIUM, PlayerLayout.forField(60 to 39))
+        assertEquals(PlayerLayout.FULL_PAGE, PlayerLayout.forField(60 to 60))
     }
 
     @Test
@@ -41,7 +40,7 @@ class WidgetModelTest {
 
     @Test
     fun `layouts without artwork don't load images, and time alone never changes the model`() {
-        val m = model(playing, PlayerLayout.SMALL)
+        val m = model(playing, PlayerLayout.COMPACT)
         assertNull(m.artworkUrl)
         // A later position (Spotify keeps playing) is not a visible change: no re-render.
         assertEquals(model(playing), model(playing.copy(positionMs = 90_000)))

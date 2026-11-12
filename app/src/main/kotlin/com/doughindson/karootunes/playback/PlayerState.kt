@@ -32,7 +32,7 @@ data class Track(
 
 /** Commands a user can issue from the widget. */
 enum class PlayerCommand {
-    PLAY, PAUSE, NEXT, PREVIOUS, SEEK_BACK, SEEK_FORWARD, TOGGLE_SHUFFLE, CYCLE_REPEAT, TOGGLE_LIKE, TOGGLE_OPTIONS
+    PLAY, PAUSE, NEXT, PREVIOUS, SEEK_BACK, SEEK_FORWARD, TOGGLE_SHUFFLE, CYCLE_REPEAT, TOGGLE_LIKE
 }
 
 /**

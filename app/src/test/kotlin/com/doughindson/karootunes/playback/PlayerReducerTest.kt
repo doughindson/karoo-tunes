@@ -99,7 +99,6 @@ class PlayerReducerTest {
     @Test
     fun `commands need an active player and respect Spotify's restrictions`() {
         assertFalse(PlayerReducer.isAllowed(PlayerState(), PlayerCommand.PLAY))
-        assertTrue(PlayerReducer.isAllowed(PlayerState(), PlayerCommand.TOGGLE_OPTIONS))
         assertFalse(PlayerReducer.isAllowed(playing.copy(disallowed = setOf(PlayerCommand.NEXT)), PlayerCommand.NEXT))
         assertTrue(PlayerReducer.isAllowed(playing, PlayerCommand.NEXT))
     }

@@ -15,8 +15,10 @@ Compatible with Karoo 3 devices.
 
 ## Features
 
-- A player data field in four sizes (single field, small, medium, full page) with play/pause, skip, like, shuffle and repeat
-- Podcasts: skip back 15 s / forward 30 s instead of previous/next while an episode plays
+- Works alongside the Karoo's own media controls, which handle play/pause and skip instantly, and adds what only Spotify can do:
+  - **Compact field:** like, shuffle, repeat, and open the library
+  - **Medium field:** album art with those four buttons, plus the current track and artist
+  - **Full page:** all of the above plus play/pause and skip (podcasts get back 15 s / forward 30 s instead)
 - Album art, and a library of playlists, Liked Songs, podcasts, saved episodes and the play queue
 - Follows the Karoo's day and night themes
 

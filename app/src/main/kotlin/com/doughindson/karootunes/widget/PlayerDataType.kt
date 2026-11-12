@@ -27,7 +27,7 @@ class PlayerDataType(
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
         val density = context.resources.displayMetrics.density
         val size = DpSize((config.viewSize.first / density).dp, (config.viewSize.second / density).dp)
-        val layout = PlayerLayout.forField(config.gridSize, size.height.value)
+        val layout = PlayerLayout.forField(config.gridSize)
         Log.d(TAG, "Starting player view: $layout, grid ${config.gridSize}, $size, preview=${config.preview}")
 
         emitter.onNext(UpdateGraphicConfig(showHeader = false))
