@@ -11,6 +11,8 @@ The first `## ` section below is published as the release notes in `manifest.jso
 * Podcasts: skip back 15 s / forward 30 s buttons on the full page while an episode plays
 * Liking a song likes the one actually playing, even right after skipping with the Karoo's controls
 * The library now includes the play queue
+* Redesigned app screens in Spotify's style for day and night mode: readable text everywhere (library names were black on black), green play buttons and filter chips, larger touch targets, and a long-press menu to queue or like a song
+* Play all your Liked Songs from the library
 * Removed the progress bar, which kept the Karoo busy redrawing
 * The player refreshes every 10 s while on screen (was 25 s), so skips made with the Karoo's controls show up sooner
 * Removed the repeat button

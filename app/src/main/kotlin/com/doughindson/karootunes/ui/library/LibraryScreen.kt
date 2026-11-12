@@ -1,49 +1,49 @@
 package com.doughindson.karootunes.ui.library
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.doughindson.karootunes.R
 import com.doughindson.karootunes.ui.components.BackButton
+import com.doughindson.karootunes.ui.components.BottomClearance
 import com.doughindson.karootunes.ui.components.ErrorMessage
+import com.doughindson.karootunes.ui.components.FilterChips
+import com.doughindson.karootunes.ui.components.IconTile
+import com.doughindson.karootunes.ui.components.ListRow
 import com.doughindson.karootunes.ui.components.Thumbnail
+import com.doughindson.karootunes.ui.theme.LikedSongsGradient
+import com.doughindson.karootunes.ui.theme.SavedEpisodesColor
 import com.doughindson.karootunes.ui.tracks.TrackListKind
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     onOpenList: (kind: TrackListKind, id: String?, title: String?) -> Unit,
@@ -55,35 +55,34 @@ fun LibraryScreen(
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            // Spotify's terms ask apps showing Spotify content to attribute it.
+            // Spotify's brand rules ask apps showing Spotify content to attribute it with the logo.
             Image(
                 painterResource(R.drawable.spotify_full_logo_rgb_black),
                 contentDescription = stringResource(R.string.spotify_logo),
-                modifier = Modifier.fillMaxWidth().height(48.dp).padding(8.dp),
-                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onBackground),
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground),
+                contentScale = ContentScale.Fit,
+                alignment = Alignment.CenterStart,
+                modifier = Modifier
+                    .padding(start = 16.dp, top = 14.dp, bottom = 6.dp)
+                    .height(28.dp),
             )
-            PrimaryTabRow(selectedTabIndex = pager.currentPage) {
-                Tab(
-                    selected = pager.currentPage == 0,
-                    onClick = { scope.launch { pager.animateScrollToPage(0) } },
-                    text = { Text(stringResource(R.string.tab_playlists)) },
-                    icon = { Icon(painterResource(R.drawable.ic_queue_music), contentDescription = null) },
-                )
-                Tab(
-                    selected = pager.currentPage == 1,
-                    onClick = { scope.launch { pager.animateScrollToPage(1) } },
-                    text = { Text(stringResource(R.string.tab_podcasts)) },
-                    icon = { Icon(painterResource(R.drawable.ic_podcast), contentDescription = null) },
-                )
-            }
+            FilterChips(
+                options = listOf(stringResource(R.string.tab_playlists), stringResource(R.string.tab_podcasts)),
+                selected = pager.currentPage,
+                onSelect = { page -> scope.launch { pager.animateScrollToPage(page) } },
+            )
             HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
                 when (page) {
                     0 -> CollectionList(
                         viewModel = viewModel,
                         kind = CollectionKind.PLAYLISTS,
                         shortcuts = listOf(
-                            Shortcut(R.drawable.ic_queue_music, R.string.queue) { onOpenList(TrackListKind.QUEUE, null, null) },
-                            Shortcut(R.drawable.ic_favorite, R.string.saved_songs) { onOpenList(TrackListKind.SAVED_TRACKS, null, null) },
+                            Shortcut(R.string.saved_songs, R.string.saved_songs_subtitle, R.drawable.ic_favorite, Brush.linearGradient(LikedSongsGradient), Color.White) {
+                                onOpenList(TrackListKind.SAVED_TRACKS, null, null)
+                            },
+                            Shortcut(R.string.queue, R.string.queue_subtitle, R.drawable.ic_queue_music, null, null) {
+                                onOpenList(TrackListKind.QUEUE, null, null)
+                            },
                         ),
                         onOpen = { item -> onOpenList(TrackListKind.PLAYLIST, item.id, item.name) },
                     )
@@ -91,7 +90,9 @@ fun LibraryScreen(
                         viewModel = viewModel,
                         kind = CollectionKind.SHOWS,
                         shortcuts = listOf(
-                            Shortcut(R.drawable.ic_podcast, R.string.saved_episodes) { onOpenList(TrackListKind.SAVED_EPISODES, null, null) },
+                            Shortcut(R.string.saved_episodes, R.string.saved_episodes_subtitle, R.drawable.ic_podcast, Brush.linearGradient(listOf(SavedEpisodesColor, SavedEpisodesColor)), Color.White) {
+                                onOpenList(TrackListKind.SAVED_EPISODES, null, null)
+                            },
                         ),
                         onOpen = { item -> onOpenList(TrackListKind.SHOW, item.id, item.name) },
                     )
@@ -102,7 +103,15 @@ fun LibraryScreen(
     }
 }
 
-private data class Shortcut(@DrawableRes val icon: Int, val label: Int, val onClick: () -> Unit)
+/** A fixed entry at the top of a list. A null [background] uses the neutral tile colour. */
+private class Shortcut(
+    val title: Int,
+    val subtitle: Int,
+    val icon: Int,
+    val background: Brush?,
+    val iconTint: Color?,
+    val onClick: () -> Unit,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,6 +123,7 @@ private fun CollectionList(
 ) {
     val items = (if (kind == CollectionKind.PLAYLISTS) viewModel.playlists else viewModel.shows).collectAsLazyPagingItems()
     val refreshing = items.loadState.refresh is LoadState.Loading
+    val refreshState = rememberPullToRefreshState()
 
     PullToRefreshBox(
         isRefreshing = refreshing,
@@ -121,18 +131,33 @@ private fun CollectionList(
             viewModel.clearCache(kind)
             items.refresh()
         },
+        state = refreshState,
         modifier = Modifier.fillMaxSize(),
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = refreshState,
+                isRefreshing = refreshing,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        },
     ) {
         LazyColumn(Modifier.fillMaxSize()) {
             shortcuts.forEach { shortcut ->
                 item {
-                    Row(
-                        Modifier.fillMaxWidth().clickable(onClick = shortcut.onClick).padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    ListRow(
+                        title = stringResource(shortcut.title),
+                        subtitle = stringResource(shortcut.subtitle),
+                        onClick = shortcut.onClick,
                     ) {
-                        Icon(painterResource(shortcut.icon), contentDescription = null, modifier = Modifier.size(48.dp).padding(8.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text(stringResource(shortcut.label), style = MaterialTheme.typography.titleMedium)
+                        IconTile(
+                            icon = shortcut.icon,
+                            background = shortcut.background ?: Brush.linearGradient(
+                                listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surfaceVariant)
+                            ),
+                            iconTint = shortcut.iconTint ?: MaterialTheme.colorScheme.onSurface,
+                        )
                     }
                 }
             }
@@ -141,25 +166,21 @@ private fun CollectionList(
             }
             items(count = items.itemCount, key = items.itemKey { it.id }) { index ->
                 val item = items[index] ?: return@items
-                Row(
-                    Modifier.fillMaxWidth().clickable { onOpen(item) }.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                ListRow(
+                    title = item.name,
+                    subtitle = item.itemCount?.let { count ->
+                        pluralStringResource(
+                            if (kind == CollectionKind.PLAYLISTS) R.plurals.playlist_subtitle else R.plurals.show_subtitle,
+                            count,
+                            count,
+                        )
+                    } ?: stringResource(if (kind == CollectionKind.PLAYLISTS) R.string.playlist else R.string.show),
+                    onClick = { onOpen(item) },
                 ) {
                     Thumbnail(item.imageUrl)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(item.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        item.itemCount?.let { count ->
-                            Text(
-                                pluralStringResource(if (kind == CollectionKind.PLAYLISTS) R.plurals.track_count else R.plurals.episode_count, count, count),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
                 }
             }
-            item { Spacer(Modifier.height(80.dp)) }
+            item { Spacer(Modifier.height(BottomClearance)) }
         }
     }
 }

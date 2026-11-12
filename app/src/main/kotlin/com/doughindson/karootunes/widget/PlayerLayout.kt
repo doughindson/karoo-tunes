@@ -26,11 +26,14 @@ enum class PlayerLayout(val showsArtwork: Boolean) {
             }
         }
 
-        /** Field height (as a fraction of the screen) used to preview each layout in the app. */
+        /**
+         * Field height as a fraction of the screen, for previewing each layout in the app. Measured on
+         * a Karoo 3: a full page field is 342 of 427 dp (the ride app's bars take the rest).
+         */
         fun previewHeightFraction(layout: PlayerLayout): Float = when (layout) {
-            FULL_PAGE -> 1f
+            FULL_PAGE -> 0.8f
             MEDIUM -> 0.5f
-            COMPACT -> 0.15f
+            COMPACT -> 0.2f
         }
     }
 }

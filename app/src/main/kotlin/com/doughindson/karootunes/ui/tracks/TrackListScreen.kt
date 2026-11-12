@@ -1,7 +1,6 @@
 package com.doughindson.karootunes.ui.tracks
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,30 +11,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,13 +39,17 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.doughindson.karootunes.R
 import com.doughindson.karootunes.ui.TrackListRoute
 import com.doughindson.karootunes.ui.components.BackButton
+import com.doughindson.karootunes.ui.components.BottomClearance
 import com.doughindson.karootunes.ui.components.ErrorMessage
+import com.doughindson.karootunes.ui.components.InfoMessage
+import com.doughindson.karootunes.ui.components.ListRow
+import com.doughindson.karootunes.ui.components.PillButton
+import com.doughindson.karootunes.ui.components.PlayButton
+import com.doughindson.karootunes.ui.components.ScreenHeader
+import com.doughindson.karootunes.ui.components.SpotifyIcon
 import com.doughindson.karootunes.ui.components.Thumbnail
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
-import java.util.Locale
-
-private const val MAX_SELECTION = 20
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,13 +62,18 @@ fun TrackListScreen(
     val resources = LocalResources.current
     val items = viewModel.items.collectAsLazyPagingItems()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
-    val selected = remember { mutableStateListOf<TrackItem>() }
     val snackbar = remember { SnackbarHostState() }
+    var actionsFor by remember { mutableStateOf<TrackItem?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 TrackListEvent.PlaybackStarted -> onPlaybackStarted()
+                is TrackListEvent.Done -> {
+                    // A song removed from Liked Songs should disappear from this list.
+                    if (event.message == R.string.removed_from_liked) items.refresh()
+                    snackbar.showSnackbar(resources.getString(event.message))
+                }
                 is TrackListEvent.Failed -> snackbar.showSnackbar(resources.getString(R.string.action_failed, event.message))
             }
         }
@@ -87,145 +89,139 @@ fun TrackListScreen(
         }
     )
 
-    Scaffold(
-        topBar = { TopAppBar(title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) }) },
-        snackbarHost = { SnackbarHost(snackbar) },
-        floatingActionButton = {
-            if (viewModel.contextUri != null && selected.isEmpty()) {
-                ExtendedFloatingActionButton(
-                    onClick = { if (!busy) viewModel.playAll() },
-                    icon = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
-                    text = { Text(stringResource(R.string.play_all)) },
-                )
-            }
-        },
-        bottomBar = {
-            if (selected.isNotEmpty()) {
-                BottomAppBar {
-                    IconButton(enabled = !busy, onClick = { viewModel.playSelection(selected.toList()) }) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.action_play))
-                    }
-                    IconButton(enabled = !busy, onClick = { viewModel.addToQueue(selected.toList()) }) {
-                        Icon(painterResource(R.drawable.ic_playlist_add), contentDescription = stringResource(R.string.add_to_queue))
-                    }
-                    IconButton(enabled = !busy, onClick = { viewModel.like(selected.toList()); selected.clear() }) {
-                        Icon(painterResource(R.drawable.ic_favorite_border), contentDescription = stringResource(R.string.add_to_liked))
-                    }
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            ScreenHeader(title, maxLines = 2) {
+                Spacer(Modifier.width(8.dp))
+                SpotifyIcon(22.dp)
+                if (viewModel.canPlayAll) {
+                    Spacer(Modifier.width(12.dp))
+                    PlayButton(onClick = { viewModel.playAll(items.itemSnapshotList.items) }, enabled = !busy)
                 }
             }
-        },
-    ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            PullToRefreshBox(
-                isRefreshing = items.loadState.refresh is LoadState.Loading,
+            TrackList(
+                items = items,
                 onRefresh = {
                     viewModel.clearCache()
                     items.refresh()
                 },
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                TrackList(
-                    items = items,
-                    selected = selected,
-                    onTap = { item ->
-                        when {
-                            selected.isNotEmpty() -> selected.toggle(item)
-                            !busy -> viewModel.playFrom(item, items.itemSnapshotList.items)
-                        }
-                    },
-                    onLongPress = { item -> selected.toggle(item) },
-                )
-            }
-            if (selected.isEmpty()) BackButton(onBack)
+                onTap = { item -> if (!busy) viewModel.playFrom(item, items.itemSnapshotList.items) },
+                onLongPress = { item -> actionsFor = item },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        BackButton(onBack)
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 76.dp))
+    }
+
+    actionsFor?.let { item ->
+        ModalBottomSheet(
+            onDismissRequest = { actionsFor = null },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ) {
+            TrackActions(
+                item = item,
+                busy = busy,
+                likeRemoves = viewModel.likeActionRemoves,
+                onAddToQueue = {
+                    viewModel.addToQueue(item)
+                    actionsFor = null
+                },
+                onLike = {
+                    viewModel.toggleLike(item)
+                    actionsFor = null
+                },
+            )
         }
     }
 }
 
-private fun MutableList<TrackItem>.toggle(item: TrackItem) {
-    if (!remove(item)) {
-        if (size >= MAX_SELECTION) removeAt(0)
-        add(item)
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TrackList(
     items: LazyPagingItems<TrackItem>,
-    selected: List<TrackItem>,
+    onRefresh: () -> Unit,
     onTap: (TrackItem) -> Unit,
     onLongPress: (TrackItem) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    LazyColumn(Modifier.fillMaxSize()) {
-        val refresh = items.loadState.refresh
-        if (refresh is LoadState.Error) {
-            item {
-                val message = if (refresh.error.isPlaylistAccessDenied()) {
-                    stringResource(R.string.playlist_items_unavailable)
-                } else {
-                    stringResource(R.string.list_error, refresh.error.message.orEmpty())
-                }
-                ErrorMessage(message, onRetry = items::retry)
-            }
-        } else if (refresh is LoadState.NotLoading && items.itemCount == 0) {
-            item { Text(stringResource(R.string.empty_list), Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge) }
-        }
-
-        // Keys by position: the same track can appear twice in a playlist or queue.
-        items(count = items.itemCount) { index ->
-            val item = items[index] ?: return@items
-            TrackRow(
-                item = item,
-                isSelected = item in selected,
-                selectionMode = selected.isNotEmpty(),
-                modifier = Modifier.combinedClickable(onLongClick = { onLongPress(item) }, onClick = { onTap(item) }),
+    val refreshing = items.loadState.refresh is LoadState.Loading
+    val refreshState = rememberPullToRefreshState()
+    PullToRefreshBox(
+        isRefreshing = refreshing,
+        onRefresh = onRefresh,
+        state = refreshState,
+        modifier = modifier.fillMaxSize(),
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = refreshState,
+                isRefreshing = refreshing,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.TopCenter),
             )
-        }
-        (items.loadState.append as? LoadState.Error)?.let { error ->
-            item { ErrorMessage(stringResource(R.string.list_error, error.error.message.orEmpty()), onRetry = items::retry) }
-        }
-        item { Spacer(Modifier.height(80.dp)) }
-    }
-}
-
-@Composable
-private fun TrackRow(item: TrackItem, isSelected: Boolean, selectionMode: Boolean, modifier: Modifier) {
-    Row(
-        modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        },
     ) {
-        Thumbnail(item.imageUrl)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                item.name,
-                style = if (item.isEpisode) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleMedium,
-                maxLines = if (item.isEpisode) 2 else 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Row {
-                Text(
-                    item.subtitle.orEmpty(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                item.durationMs?.let {
-                    Text(formatDuration(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        LazyColumn(Modifier.fillMaxSize()) {
+            when (val refresh = items.loadState.refresh) {
+                is LoadState.Error -> item {
+                    if (refresh.error.isPlaylistAccessDenied()) {
+                        // Not a failure: Spotify only lists playlists you own or collaborate on.
+                        InfoMessage(stringResource(R.string.playlist_items_unavailable))
+                    } else {
+                        ErrorMessage(stringResource(R.string.list_error, refresh.error.message.orEmpty()), onRetry = items::retry)
+                    }
+                }
+                is LoadState.NotLoading -> if (items.itemCount == 0) item { InfoMessage(stringResource(R.string.empty_list)) }
+                else -> Unit
+            }
+
+            // Keyed by position: the same track can appear twice in a playlist or queue.
+            items(count = items.itemCount) { index ->
+                val item = items[index] ?: return@items
+                ListRow(
+                    title = item.name,
+                    subtitle = item.subtitle,
+                    onClick = { onTap(item) },
+                    onLongClick = { onLongPress(item) },
+                    titleLines = if (item.isEpisode) 2 else 1,
+                ) {
+                    Thumbnail(item.imageUrl)
                 }
             }
+            (items.loadState.append as? LoadState.Error)?.let { error ->
+                item { ErrorMessage(stringResource(R.string.list_error, error.error.message.orEmpty()), onRetry = items::retry) }
+            }
+            item { Spacer(Modifier.height(BottomClearance)) }
         }
-        if (selectionMode) Checkbox(checked = isSelected, onCheckedChange = null)
     }
 }
 
-internal fun formatDuration(ms: Int): String {
-    val totalSeconds = ms / 1000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
-    else String.format(Locale.US, "%d:%02d", minutes, seconds)
+/** The long-press sheet: the track, then large actions that are easy to hit on the Karoo. */
+@Composable
+private fun TrackActions(item: TrackItem, busy: Boolean, likeRemoves: Boolean, onAddToQueue: () -> Unit, onLike: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Thumbnail(item.imageUrl, size = 56.dp)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(item.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                item.subtitle?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        PillButton(stringResource(R.string.add_to_queue), onAddToQueue, enabled = !busy, icon = R.drawable.ic_playlist_add)
+        PillButton(
+            stringResource(if (likeRemoves) R.string.remove_from_liked else R.string.add_to_liked),
+            onLike,
+            enabled = !busy,
+            icon = if (likeRemoves) R.drawable.ic_favorite else R.drawable.ic_favorite_border,
+        )
+    }
 }

@@ -42,7 +42,8 @@ internal object WidgetColors {
     val textSecondary = ColorProvider(day = Color(0xFF555555), night = Color(0xFFAAAAAA))
     val icon = ColorProvider(day = Color(0xFF333333), night = Color(0xFFC8C8C8))
     val iconDisabled = ColorProvider(day = Color(0xFFB8B8B8), night = Color(0xFF5A5A5A))
-    val iconActive = ColorProvider(day = Color(0xFF15883E), night = Color(0xFF1DB954))
+    // Day uses a darker green: Spotify green on a light-grey button is too faint.
+    val iconActive = ColorProvider(day = Color(0xFF15883E), night = Color(0xFF1ED760))
     val onAccent = ColorProvider(day = Color(0xFF000000), night = Color(0xFF000000))
 }
 
@@ -81,7 +82,8 @@ internal fun WidgetButton(
     }
     Box(
         modifier = modifier
-            .background(ImageProvider(if (accent) R.drawable.widget_button_accent else R.drawable.widget_button_surface))
+            // A disabled play button turns grey too, so it doesn't look like the main action.
+            .background(ImageProvider(if (accent && enabled) R.drawable.widget_button_accent else R.drawable.widget_button_surface))
             .let { if (enabled) it.clickable(onClick) else it },
         contentAlignment = Alignment.Center,
     ) {

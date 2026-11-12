@@ -5,6 +5,8 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -27,9 +29,12 @@ class MainActivity : ComponentActivity() {
         handle(intent)
         setContent {
             AppTheme {
-                // A new launch (e.g. from the widget while the app is open) starts navigation afresh.
-                key(launchCount.intValue) {
-                    AppNavHost(startAtLibrary = startAtLibrary.value, onExit = ::finish)
+                // The surface gives every screen the theme's background and text colour.
+                Surface(color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground) {
+                    // A new launch (e.g. from the widget while the app is open) starts navigation afresh.
+                    key(launchCount.intValue) {
+                        AppNavHost(startAtLibrary = startAtLibrary.value, onExit = ::finish)
+                    }
                 }
             }
         }

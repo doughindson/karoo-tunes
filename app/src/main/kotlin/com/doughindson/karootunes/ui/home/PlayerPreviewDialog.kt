@@ -4,12 +4,11 @@ import android.widget.FrameLayout
 import android.widget.RemoteViews
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -30,11 +29,12 @@ import com.doughindson.karootunes.R
 import com.doughindson.karootunes.playback.PlayerRepository
 import com.doughindson.karootunes.playback.PlayerVisibility
 import com.doughindson.karootunes.ui.components.BackButton
+import com.doughindson.karootunes.ui.components.FilterChips
 import com.doughindson.karootunes.widget.PlayerLayout
 import com.doughindson.karootunes.widget.WidgetRenderer
 import org.koin.compose.koinInject
 
-/** Shows the real widget at the device's screen size. Tap the label to cycle through the layouts. */
+/** Shows the real widget at the device's screen size, in each of its layouts. */
 @Composable
 fun PlayerPreviewDialog(onDismiss: () -> Unit) {
     val renderer = koinInject<WidgetRenderer>()
@@ -56,21 +56,30 @@ fun PlayerPreviewDialog(onDismiss: () -> Unit) {
         val views: RemoteViews? by remember(layout) { renderer.views(layout, fieldSize) }.collectAsStateWithLifecycle(initialValue = null)
 
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            AndroidView(
-                factory = { context -> FrameLayout(context) },
-                update = { frame ->
-                    frame.removeAllViews()
-                    views?.apply(frame.context, frame)?.let(frame::addView)
-                },
-                modifier = Modifier.align(Alignment.Center).size(fieldSize),
-            )
-            FilledTonalButton(
-                onClick = { layout = PlayerLayout.entries[(layout.ordinal + 1) % PlayerLayout.entries.size] },
-                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-            ) {
-                Text(stringResource(R.string.preview_layout, layout.name))
+            Column(Modifier.fillMaxSize()) {
+                FilterChips(
+                    options = PlayerLayout.entries.map { stringResource(it.labelRes()) },
+                    selected = layout.ordinal,
+                    onSelect = { layout = PlayerLayout.entries[it] },
+                )
+                Box(Modifier.fillMaxWidth().weight(1f)) {
+                    AndroidView(
+                        factory = { context -> FrameLayout(context) },
+                        update = { frame ->
+                            frame.removeAllViews()
+                            views?.apply(frame.context, frame)?.let(frame::addView)
+                        },
+                        modifier = Modifier.align(Alignment.TopCenter).size(fieldSize),
+                    )
+                }
             }
             BackButton(onDismiss)
         }
     }
+}
+
+private fun PlayerLayout.labelRes() = when (this) {
+    PlayerLayout.COMPACT -> R.string.layout_compact
+    PlayerLayout.MEDIUM -> R.string.layout_medium
+    PlayerLayout.FULL_PAGE -> R.string.layout_full_page
 }

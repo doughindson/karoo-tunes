@@ -19,6 +19,7 @@ import com.doughindson.karootunes.data.spotify.model.QueueResponse
 import com.doughindson.karootunes.data.spotify.model.SavedEpisode
 import com.doughindson.karootunes.data.spotify.model.SavedShow
 import com.doughindson.karootunes.data.spotify.model.SavedTrack
+import com.doughindson.karootunes.data.spotify.model.User
 import com.doughindson.karootunes.data.spotify.model.WebApiErrorResponse
 import kotlinx.coroutines.delay
 import kotlinx.serialization.KSerializer
@@ -55,6 +56,9 @@ class SpotifyWebApi(
     suspend fun seek(positionMs: Int) = command("PUT", "/me/player/seek?position_ms=${positionMs.coerceAtLeast(0)}")
     suspend fun setShuffle(enabled: Boolean) = command("PUT", "/me/player/shuffle?state=$enabled")
     suspend fun addToQueue(uri: String) = command("POST", "/me/player/queue?uri=${encode(uri)}")
+
+    /** The logged-in user; only the ID is used (for the Liked Songs context). */
+    suspend fun currentUser(): ApiResult<User> = get("/me", User.serializer())
 
     // --- Library (the 2026 unified endpoints take full spotify: URIs) -------------------------
 

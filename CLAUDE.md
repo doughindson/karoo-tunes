@@ -46,6 +46,11 @@ The last version with it is tagged `standalone-mode-reference`. To bring it back
 
 ## Conventions
 
+- App UI: the screen is only 256 x 427 dp. Use the shared components in `ui/components` (`ScreenHeader`,
+  `ListRow`, `PillButton`, `PlayButton`, `FilterChips`, `BackButton`) and the full colour schemes in
+  `ui/theme/Theme.kt`, which follow Spotify's palette. Green is a fill (with black content), never text.
+  `ui/Previews.kt` has light/dark previews at the Karoo's size.
+
 - Network and HTTP errors are values (`ApiResult`), not exceptions; never show Toasts from the data layer.
 - Widget colours: the text and icon `ColorProvider`s are in `WidgetColors` (day/night pairs). The shapes use
   `res/values(-night)/colors.xml`. Keep the two in sync.
