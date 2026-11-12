@@ -14,7 +14,6 @@ import com.doughindson.karootunes.widget.PlayerDataType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -111,15 +110,20 @@ class PlayerRepository(
             while (true) {
                 poll()
                 val requested = withTimeoutOrNull(nextPollDelayMs()) { refreshRequests.receive() } != null
-                // Give Spotify a moment to apply a command before asking for the new state.
-                if (requested) delay(COMMAND_SETTLE_MS)
+                // After a command, wait until presses stop before refreshing. The Karoo sends one request
+                // at a time, so a refresh in between would hold up the next press by seconds.
+                if (requested) {
+                    while (withTimeoutOrNull(COMMAND_SETTLE_MS) { refreshRequests.receive() } != null) { /* another command: keep waiting */ }
+                }
             }
         }
     }
 
     private suspend fun nextPollDelayMs(): Long {
-        val interval = if (settings.current().onlyRefreshOnActivePage) ACTIVE_PAGE_INTERVAL_MS else PROFILE_INTERVAL_MS
         val current = _state.value
+        // The rider is probably about to start Spotify on the phone; notice it quickly.
+        if (current.connection == Connection.NO_PLAYER) return NO_PLAYER_INTERVAL_MS
+        val interval = if (settings.current().onlyRefreshOnActivePage) ACTIVE_PAGE_INTERVAL_MS else PROFILE_INTERVAL_MS
         val duration = current.track?.durationMs
         if (!current.isPlaying || duration == null) return interval
         // Refresh just after the current track ends so the next one shows up promptly.
@@ -170,6 +174,7 @@ class PlayerRepository(
         const val PROFILE_INTERVAL_MS = 45_000L
         const val MIN_POLL_INTERVAL_MS = 3_000L
         const val TRACK_END_GRACE_MS = 2_000L
-        const val COMMAND_SETTLE_MS = 1_500L
+        const val COMMAND_SETTLE_MS = 2_500L
+        const val NO_PLAYER_INTERVAL_MS = 10_000L
     }
 }

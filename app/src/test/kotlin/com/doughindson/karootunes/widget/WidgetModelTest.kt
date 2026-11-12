@@ -66,10 +66,10 @@ class WidgetModelTest {
     }
 
     @Test
-    fun `pending commands are disabled`() {
-        val m = model(playing, ui = WidgetUiState(pending = setOf(PlayerCommand.PAUSE)))
-        assertFalse(m.isEnabled(PlayerCommand.PAUSE))
+    fun `buttons stay active while a command is in flight`() {
+        val m = model(playing, ui = WidgetUiState(pending = setOf(PlayerCommand.NEXT)))
         assertTrue(m.isEnabled(PlayerCommand.NEXT))
+        assertTrue(m.isEnabled(PlayerCommand.PAUSE))
     }
 
     @Test

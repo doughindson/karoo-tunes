@@ -22,7 +22,11 @@ class PlayerCommands(
             return
         }
         val before = repository.state.value
-        if (!PlayerReducer.isAllowed(before, command)) return
+        if (!PlayerReducer.isAllowed(before, command)) {
+            // Our state may be stale (e.g. Spotify was just restarted on the phone): check now.
+            if (!before.hasPlayer) repository.requestRefresh()
+            return
+        }
         if (!widgetUi.tryMarkPending(command)) return
 
         val now = repository.now()

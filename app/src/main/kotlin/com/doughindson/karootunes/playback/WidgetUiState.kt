@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 /** Widget-only state that isn't about playback itself. */
 data class WidgetUiState(
     val optionsOpen: Boolean = false,
-    /** Commands sent but not yet answered; their buttons are disabled meanwhile. */
+    /** Commands sent but not yet answered; repeat taps of these are ignored. */
     val pending: Set<PlayerCommand> = emptySet(),
 )
 

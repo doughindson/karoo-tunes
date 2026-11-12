@@ -86,9 +86,10 @@ data class WidgetModel(
                 }
             }
 
-            val enabled = PlayerCommand.entries.filterTo(mutableSetOf()) { command ->
-                command !in ui.pending && PlayerReducer.isAllowed(state, command)
-            }
+            // Buttons stay active while a command is in flight: through the companion app an answer
+            // takes seconds, and greyed-out buttons made every press feel stuck. Repeat taps of a
+            // pending command are ignored in PlayerCommands instead.
+            val enabled = PlayerCommand.entries.filterTo(mutableSetOf()) { command -> PlayerReducer.isAllowed(state, command) }
 
             val duration = track?.durationMs
             val progress = if (layout.showsProgress && duration != null && duration > 0) {
